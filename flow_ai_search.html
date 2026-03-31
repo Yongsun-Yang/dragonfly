@@ -1,0 +1,2690 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>flow · 통합 AI 검색 프로토타입</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f4f7;--sur:#fff;
+  --pri:#4f46e5;--pri-l:#ede9fe;--pri-b:#c4b5fd;
+  --txt:#111827;--sub:#6b7280;--mut:#9ca3af;--bdr:#e5e7eb;
+  --hd:#1a1a2e;--cyan:#06b6d4;--pink:#ec4899;
+  --ai:#6d28d9;--ai-l:#f5f3ff;--ai-b:#ddd6fe;
+}
+body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px}
+
+/* ──────────────────────────────── HEADER */
+.hd{background:var(--hd);height:56px;padding:0 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200}
+.logo{color:#fff;font-weight:700;font-size:18px;letter-spacing:-.5px}
+.sw{flex:1;max-width:600px;position:relative}
+.sbox{width:100%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.15);border-radius:24px;display:flex;align-items:center;gap:8px;padding:0 16px;height:38px;cursor:pointer;transition:all .2s}
+.sbox:hover,.sbox.open{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35)}
+.sbox-mode{display:flex;align-items:center;gap:4px;background:rgba(109,40,217,.35);border-radius:12px;padding:2px 9px;font-size:11.5px;font-weight:600;color:rgba(255,255,255,.9);white-space:nowrap;flex-shrink:0;transition:all .3s}
+.sbox-mode.off{background:rgba(255,255,255,.12);color:rgba(255,255,255,.5)}
+.sbox-ph{color:rgba(255,255,255,.4);font-size:13.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbox-ph.has-val{color:rgba(255,255,255,.85)}
+.sbox-sk{color:rgba(255,255,255,.2);font-size:11px;white-space:nowrap;flex-shrink:0}
+.hd-icons{margin-left:auto;display:flex;gap:16px;color:rgba(255,255,255,.45);font-size:13px}
+
+/* ──────────────────────────────── DROPDOWN */
+.dd{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);width:600px;background:var(--sur);border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.18);z-index:300;overflow:hidden;animation:dropIn .15s ease}
+@keyframes dropIn{from{opacity:0;transform:translateX(-50%) translateY(-6px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.dd-top{padding:18px 18px 0}
+.dd-inp-row{display:flex;align-items:center;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--bdr)}
+.dd-inp{flex:1;border:none;outline:none;font-size:15.5px;font-family:inherit;color:var(--txt);background:none}
+.dd-inp::placeholder{color:var(--mut)}
+.dd-inp-clear{color:var(--mut);cursor:pointer;font-size:18px;background:none;border:none;padding:0 2px;border-radius:50%;transition:all .15s;flex-shrink:0;line-height:1}
+.dd-inp-clear:hover{background:var(--bg);color:var(--sub)}
+.dd-tabs-wrap{padding:10px 0 4px}
+.dd-row{display:flex;align-items:center;gap:6px;padding-bottom:7px;flex-wrap:nowrap;overflow-x:auto}
+.dd-row::-webkit-scrollbar{display:none}
+
+/* AI 검색 태그 */
+.t-ai-on{display:inline-flex;align-items:center;gap:5px;background:var(--ai-l);border:1.5px solid var(--ai-b);border-radius:20px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--ai);white-space:nowrap;flex-shrink:0;user-select:none;cursor:pointer;transition:all .15s}
+.t-ai-on:hover{background:#ede9fe;border-color:#a78bfa}
+.t-ai-on .ai-x{font-size:14px;opacity:.5;margin-left:1px;line-height:1;transition:opacity .15s}
+.t-ai-on:hover .ai-x{opacity:.85}
+.t-ai-off{display:inline-flex;align-items:center;gap:5px;background:#f3f4f6;border:1.5px solid #e5e7eb;border-radius:20px;padding:6px 12px;font-size:13px;font-weight:500;color:#6b7280;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .2s}
+.t-ai-off:hover{background:var(--ai-l);border-color:var(--ai-b);color:var(--ai)}
+
+/* 외부 연동 탭 */
+.t-ext{display:inline-flex;align-items:center;gap:4px;background:var(--ai-l);border:1px solid var(--ai-b);border-radius:20px;padding:6px 12px;font-size:12.5px;font-weight:500;color:var(--ai);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;position:relative}
+.t-ext:hover{background:#ede9fe}
+.t-ext.on{background:var(--ai);color:#fff;border-color:var(--ai);font-weight:600}
+.t-ext-dis{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px dashed #d1d5db;border-radius:20px;padding:6px 12px;font-size:12.5px;color:#d1d5db;cursor:pointer;white-space:nowrap;flex-shrink:0;position:relative;transition:border-color .15s,color .15s}
+.t-ext-dis:hover{border-color:#c4b5fd;color:#c4b5fd}
+
+/* 일반 탭 */
+.t-reg{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--bdr);border-radius:20px;padding:6px 12px;font-size:12.5px;font-weight:500;color:var(--sub);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;font-family:inherit;flex-direction:column;line-height:1.2}
+.t-reg:hover{background:#f3f4f6;color:var(--txt)}
+.t-reg.on{background:var(--pri-l);color:var(--pri);border-color:var(--pri);font-weight:600}
+.t-reg-main{display:flex;align-items:center;gap:4px}
+.t-reg-hint{font-size:9.5px;color:#b0b8c8;font-weight:400;margin-top:1px}
+.t-reg.on .t-reg-hint{color:#a5b4fc}
+
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+.shake{animation:shake .3s ease}
+
+/* Tooltip */
+.tt{position:relative}
+.tt-tip{position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;font-size:11.5px;padding:5px 10px;border-radius:7px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:10}
+.tt-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:4px solid transparent;border-top-color:#1f2937}
+.tt:hover .tt-tip{opacity:1}
+
+/* Recent */
+.dd-rec{padding:12px 18px 6px}
+.dd-rec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.dd-rec-ttl{font-size:13px;font-weight:600}
+.dd-rec-clr{font-size:12px;color:var(--mut);cursor:pointer;background:none;border:none;font-family:inherit}
+.dd-rec-clr:hover{color:var(--sub)}
+.rec-item{display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;border-radius:8px;transition:background .12s}
+.rec-item:hover{background:var(--bg)}
+.rec-ico{color:var(--mut);font-size:14px;flex-shrink:0}
+.rec-txt{flex:1;font-size:13.5px;color:var(--sub)}
+.rec-date{font-size:12px;color:var(--mut)}
+.rec-del{color:var(--mut);cursor:pointer;opacity:0;font-size:15px;background:none;border:none;padding:0 3px}
+.rec-item:hover .rec-del{opacity:1}
+.dd-sc{text-align:center;padding:10px 18px 14px;font-size:12px;color:var(--mut);border-top:1px solid var(--bdr);margin-top:6px}
+
+/* Overlay */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.22);z-index:150;display:none}
+.ov.on{display:block}
+
+/* ──────────────────────────────── PAGE */
+.page{max-width:1280px;margin:0 auto;padding:0 24px}
+
+/* EMPTY */
+.empty{padding:40px 0 60px;max-width:1000px;margin:0 auto}
+.empty-logo{font-size:28px;font-weight:800;color:var(--pri);opacity:.12;letter-spacing:-1px;text-align:center;margin-bottom:6px}
+.empty-hint{font-size:14px;color:var(--mut);text-align:center;line-height:1.7;margin-bottom:32px}
+
+/* 데모 그룹 그리드 */
+.demo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.demo-grid-bottom{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.demo-group{background:var(--sur);border:1px solid var(--bdr);border-radius:14px;padding:16px 18px}
+.demo-group-title{font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.demo-btn{display:block;width:100%;text-align:left;background:var(--bg);border:1px solid var(--bdr);border-radius:9px;padding:9px 13px;font-size:13px;color:var(--sub);cursor:pointer;font-family:inherit;transition:all .15s;margin-bottom:6px}
+.demo-btn:last-child{margin-bottom:0}
+.demo-btn:hover{background:var(--pri-l);border-color:var(--pri);color:var(--pri)}
+.demo-btn.ai{background:var(--ai-l);border-color:var(--ai-b);color:var(--ai)}
+.demo-btn.ai:hover{background:#ede9fe;border-color:#a78bfa}
+.demo-btn.fail{background:#fff5f5;border-color:#fee2e2;color:#b91c1c}
+.num-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--pri);color:#fff;font-size:11px;font-weight:800;border-radius:4px;padding:1px 5px;margin-left:5px;letter-spacing:0;vertical-align:middle;flex-shrink:0}
+.num-badge-sm{display:inline-flex;align-items:center;justify-content:center;background:var(--pri-l);color:var(--pri);font-size:11px;font-weight:800;border-radius:4px;padding:1px 6px;margin-left:4px;letter-spacing:0;vertical-align:middle}
+.demo-btn.fail:hover{background:#fee2e2}
+
+/* ──────────────────────────────── RESULT HEADER */
+.rh{padding:14px 0 10px;display:flex;align-items:center;gap:10px}
+.back{display:flex;align-items:center;gap:6px;background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--sub);cursor:pointer;font-family:inherit;transition:background .15s;flex-shrink:0}
+.back:hover{background:#f9fafb}
+.rtit{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rtit em{color:var(--pri);font-style:normal}
+
+/* ──────────────────────────────── RESULT TAB BAR */
+.rtabs{display:flex;align-items:center;gap:4px;padding:0 0 14px;flex-wrap:nowrap;overflow-x:auto}
+.rtabs::-webkit-scrollbar{display:none}
+.rt-search{display:flex;align-items:center;gap:5px;background:var(--hd);color:#fff;border:none;border-radius:24px;padding:7px 14px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .15s}
+.rt-search:hover{opacity:.85}
+.rt-search.mode-browse{background:#374151}
+.rtdiv{width:1px;height:22px;background:var(--bdr);margin:0 4px;flex-shrink:0}
+.rt{display:flex;align-items:center;gap:4px;background:var(--sur);border:1px solid var(--bdr);border-radius:20px;padding:6px 12px;font-size:12.5px;font-weight:500;color:var(--sub);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:inherit;flex-shrink:0}
+.rt:hover{background:#f9fafb;color:var(--txt)}
+.rt.on{background:#1f2937;border-color:#1f2937;color:#fff;font-weight:600}
+.rt-cnt{font-size:11px;opacity:.7;margin-left:1px}
+
+/* ──────────────────────────────── AI RESULT LAYOUT */
+.ai-layout{display:flex;gap:20px;align-items:flex-start;padding-bottom:40px}
+.ai-main{flex:1;min-width:0}
+.ai-card{background:var(--sur);border-radius:16px;padding:24px;position:relative;overflow:hidden}
+.ai-card::before{content:'';position:absolute;inset:0;border-radius:16px;padding:2px;background:linear-gradient(135deg,var(--cyan),var(--pri),var(--pink));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+.ai-title{font-size:17px;font-weight:700;margin-bottom:14px}
+.bdg{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;margin-bottom:14px;border:1px solid}
+.b-ok{background:#f0fdf4;border-color:#bbf7d0;color:#16a34a}
+.b-mask{background:#eff6ff;border-color:#bfdbfe;color:#2563eb}
+.phd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.plbl{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--sub);cursor:pointer;user-select:none}
+.rtabsr{display:flex;gap:6px}
+.rtabr{font-size:11px;font-weight:600;color:var(--mut);cursor:pointer;padding:2px 0;border-bottom:2px solid transparent}
+.rtabr.on{color:var(--pri);border-color:var(--pri)}
+.steps{display:flex;flex-direction:column;gap:10px;padding-left:2px}
+.step{display:flex;gap:12px;align-items:flex-start}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.d-done{background:#4ade80}.d-spin{background:var(--pri);animation:pu 1s infinite}.d-wait{background:#d1d5db}
+@keyframes pu{0%,100%{opacity:1}50%{opacity:.3}}
+.sc{flex:1;min-width:0}
+.st{font-size:13px;font-weight:600;margin-bottom:3px}
+.sd{font-size:12px;color:var(--mut);margin-bottom:5px;line-height:1.5}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+.chip{display:inline-flex;align-items:center;border-radius:6px;padding:3px 9px;font-size:11.5px;font-weight:500;border:1px solid transparent}
+.ck{background:#f3f4f6;color:var(--sub);border-color:#e5e7eb}
+.ckw{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+.ckt{background:#f3f4f6;color:var(--txt)}
+.cp{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0}
+.cpo{background:#f3f4f6;color:var(--sub);border-color:#e5e7eb}
+.cc{background:#fefce8;color:#ca8a04;border-color:#fde68a}
+.cch{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+.cf{background:#fdf4ff;color:#9333ea;border-color:#e9d5ff}
+.ccf{background:#fff7ed;color:#ea580c;border-color:#fed7aa}
+.cw{background:#f0fdfa;color:#0d9488;border-color:#99f6e4}
+.ccal{background:#fff1f2;color:#be123c;border-color:#fecdd3}
+.cem{background:#faf5ff;color:#7c3aed;border-color:#e9d5ff}
+.fr{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--mut);margin-bottom:3px}
+.sumbody{font-size:14px;line-height:1.8;color:var(--txt);border-top:1px solid var(--bdr);padding-top:14px;margin-top:2px}
+.sumbody p{margin-bottom:9px}
+.ic{display:inline-flex;align-items:center;background:#f0f0f0;border:1px solid transparent;border-radius:4px;padding:1px 7px;font-size:11px;color:#6b7280;font-weight:500;cursor:pointer;vertical-align:middle;margin:0 3px;transition:all .15s}
+.ic:hover{background:#e5e5e5;color:#374151}
+.ic.active{background:#ede9fe;border-color:#a78bfa;color:var(--ai);font-weight:600}
+.line-inner{display:inline}
+.line-inner.line-highlight{background:#f5f3ff;border-radius:5px;padding:2px 6px}
+@keyframes cardPulse{0%{box-shadow:0 0 0 0 rgba(109,40,217,.4)}70%{box-shadow:0 0 0 6px rgba(109,40,217,0)}100%{box-shadow:0 0 0 0 rgba(109,40,217,0)}}
+.src-card.matched{border-color:var(--ai)!important;background:#faf5ff!important;box-shadow:0 0 0 3px rgba(109,40,217,.12)!important;animation:cardPulse .5s ease}
+.src-card.matched .src-title{color:var(--ai)}
+.src-card.matched .src-dest{color:var(--ai);font-weight:600}
+.fail-msg{border-top:1px solid var(--bdr);padding-top:14px;margin-top:2px;font-size:14px;color:var(--sub);line-height:1.8}
+.fail-stop{font-style:italic;color:var(--mut);font-size:13px}
+.acts{display:flex;align-items:center;gap:6px;margin-top:14px;border-top:1px solid var(--bdr);padding-top:14px}
+.act{display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--bdr);border-radius:7px;padding:6px 8px;font-size:16px;color:var(--sub);cursor:pointer;font-family:inherit;transition:all .15s;width:34px;height:34px}
+.act:hover{background:#f9fafb;color:var(--txt)}
+.fbtn{width:100%;margin-top:10px;background:none;border:1.5px solid var(--bdr);border-radius:11px;padding:11px;font-size:13px;font-weight:600;color:var(--pri);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .2s}
+.fbtn:hover{background:var(--pri-l);border-color:var(--pri)}
+
+/* Source panel (AI mode right) */
+.src-panel{width:290px;flex-shrink:0}
+.src-hd{font-size:14px;font-weight:600;margin-bottom:11px;padding:0 3px}
+.src-empty{background:var(--sur);border-radius:11px;padding:36px 18px;text-align:center;border:1px solid var(--bdr)}
+.src-card{background:var(--sur);border:1px solid var(--bdr);border-radius:11px;padding:13px;margin-bottom:9px;cursor:pointer;transition:all .15s}
+.src-card:hover{border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-l)}
+.src-card.ext{border-color:var(--ai-b)}
+.src-card.ext:hover{border-color:var(--ai);box-shadow:0 0 0 3px var(--ai-l)}
+.src-meta{display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap}
+.src-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px}
+.sb-post{background:#f0fdf4;color:#16a34a}.sb-task{background:#eff6ff;color:#2563eb}
+.sb-file{background:#fdf4ff;color:#9333ea}.sb-wiki{background:#f0fdfa;color:#0d9488}
+.sb-cal{background:#fff1f2;color:#be123c}.sb-email{background:#faf5ff;color:#7c3aed}
+.sb-chat{background:#eff6ff;color:#2563eb}
+.src-proj{font-size:11px;color:var(--mut);margin-left:auto}
+.src-date{font-size:11px;color:var(--mut)}
+.src-title{font-size:13px;font-weight:600;line-height:1.4;margin-bottom:3px}
+.src-prev{font-size:12px;color:var(--sub);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;overflow:hidden}
+.src-author{font-size:11px;color:var(--mut);margin-top:5px}
+.src-dest{font-size:11px;margin-top:4px}
+.d-int{color:var(--pri)}.d-ext{color:var(--ai)}
+
+/* ──────────────────────────────── BROWSE LAYOUT */
+.browse-layout{display:flex;gap:20px;align-items:flex-start;padding-bottom:40px}
+.browse-main{flex:1;min-width:0}
+
+/* 검색 결과 그룹 */
+.res-group{background:var(--sur);border-radius:12px;margin-bottom:16px;overflow:hidden;border:1px solid var(--bdr)}
+.res-group-hd{display:flex;align-items:center;gap:8px;padding:14px 18px 12px;border-bottom:1px solid var(--bdr)}
+.res-group-title{font-size:15px;font-weight:700;color:var(--txt)}
+.res-group-cnt{font-size:13px;font-weight:600;color:var(--pri);background:var(--pri-l);border-radius:12px;padding:1px 8px}
+.res-more{margin-left:auto;font-size:12.5px;color:var(--pri);cursor:pointer;font-weight:500}
+.res-more:hover{text-decoration:underline}
+
+/* 개별 결과 아이템 — flow 실제 UI 스타일 */
+.res-item{display:flex;gap:12px;padding:13px 18px;border-bottom:1px solid #f3f4f6;cursor:pointer;transition:background .12s;align-items:flex-start}
+.res-item:last-child{border-bottom:none}
+.res-item:hover{background:#f9fafb}
+.res-item-ico{width:32px;height:32px;border-radius:6px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:2px;color:#6b7280}
+.res-item-body{flex:1;min-width:0}
+.res-item-title{font-size:14px;font-weight:500;color:var(--pri);margin-bottom:4px;line-height:1.45}
+.res-item-title mark{background:none;color:var(--pri);font-weight:700;padding:0}
+.res-item-preview{font-size:12.5px;color:var(--sub);line-height:1.6;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;overflow:hidden;-webkit-box-orient:vertical}
+.res-item-preview mark{background:none;color:var(--txt);font-weight:700;padding:0}
+.res-item-meta{display:flex;align-items:center;gap:0;font-size:12px;color:var(--mut);flex-wrap:wrap}
+.res-item-meta .pipe{margin:0 6px;opacity:.3}
+.res-item-meta .type-badge{font-size:11.5px;color:var(--mut)}
+.res-item-meta .dot-sep{opacity:.4}
+
+/* ES only banner */
+.es-banner{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:18px;margin-bottom:16px;display:flex;align-items:center;gap:14px}
+.es-banner-ico{font-size:26px;flex-shrink:0;opacity:.5}
+.es-banner-body h3{font-size:14px;font-weight:600;color:var(--sub);margin-bottom:4px}
+.es-banner-body p{font-size:13px;color:var(--mut);line-height:1.5}
+.es-on-btn{margin-top:10px;background:none;border:1.5px solid var(--ai-b);border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--ai);cursor:pointer;font-family:inherit;transition:all .2s}
+.es-on-btn:hover{background:var(--ai-l)}
+
+/* ──────────────────────────────── FILTER PANEL */
+.filter-panel{width:280px;flex-shrink:0}
+.flow-ai-card{background:var(--sur);border:1.5px solid var(--ai-b);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all .2s}
+.flow-ai-card:hover{background:var(--ai-l)}
+.flow-ai-label{font-size:15px;font-weight:700;color:var(--ai)}
+.flow-ai-arrow{color:var(--ai);font-size:16px}
+.filter-box{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:16px}
+.filter-section{margin-bottom:18px}
+.filter-section:last-child{margin-bottom:0}
+.filter-label{font-size:12px;font-weight:600;color:var(--mut);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.filter-chips{display:flex;flex-wrap:wrap;gap:6px}
+.f-chip{font-size:12.5px;padding:5px 11px;border-radius:16px;border:1px solid var(--bdr);background:var(--bg);color:var(--sub);cursor:pointer;transition:all .15s;font-family:inherit}
+.f-chip:hover{border-color:var(--pri);color:var(--pri)}
+.f-chip.on{background:var(--pri-l);border-color:var(--pri);color:var(--pri);font-weight:600}
+.filter-input{width:100%;border:1px solid var(--bdr);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;color:var(--txt);outline:none;transition:border-color .15s;background:var(--bg)}
+.filter-input:focus{border-color:var(--pri);background:var(--sur)}
+.filter-input::placeholder{color:var(--mut)}
+.filter-reset{font-size:12px;color:var(--mut);cursor:pointer;background:none;border:none;font-family:inherit;transition:color .15s}
+.filter-reset:hover{color:var(--pri)}
+.filter-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.filter-title{font-size:14px;font-weight:600}
+
+/* 프로젝트 내부 검색 스코프 칩 */
+.scope-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  background:#f0f0ff;border:1.5px solid #c7d7fd;
+  border-radius:20px;padding:5px 12px;
+  font-size:13px;font-weight:600;color:#3730a3;
+  white-space:nowrap;flex-shrink:0;user-select:none;
+}
+.scope-chip .scope-x{
+  opacity:.5;font-size:13px;cursor:pointer;margin-left:2px;
+  border-radius:50%;padding:0 2px;transition:all .15s;
+}
+.scope-chip .scope-x:hover{opacity:1;background:#c7d7fd}
+
+/* 컨텍스트 전환 토글 (데모용) */
+.ctx-toggle{
+  position:fixed;bottom:20px;left:20px;z-index:300;
+  background:#fff;border:1px solid var(--bdr);border-radius:12px;
+  padding:12px 14px;box-shadow:0 4px 16px rgba(0,0,0,.1);
+  font-size:12.5px;color:var(--sub);
+}
+.ctx-toggle .ctx-title{font-weight:700;color:var(--txt);margin-bottom:8px;font-size:13px}
+.ctx-btn{
+  display:block;width:100%;text-align:left;
+  background:var(--bg);border:1px solid var(--bdr);border-radius:8px;
+  padding:7px 12px;font-size:12px;color:var(--sub);
+  cursor:pointer;font-family:inherit;margin-bottom:5px;transition:all .15s;
+}
+.ctx-btn:last-child{margin-bottom:0}
+.ctx-btn:hover{border-color:var(--pri);color:var(--pri);background:var(--pri-l)}
+.ctx-btn.active{border-color:var(--pri);color:var(--pri);background:var(--pri-l);font-weight:600}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fi .22s ease forwards}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fadeUp{animation:fadeUp .25s ease forwards}
+
+/* ── 서브 필터 (동적) */
+.sub-filter-box{background:#faf9ff;border:1px solid var(--ai-b);border-radius:10px;padding:13px 14px;margin-top:12px;animation:fi .2s ease}
+.sub-filter-title{font-size:11.5px;font-weight:700;color:var(--ai);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.sub-filter-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.sub-filter-input{width:100%;border:1px solid var(--ai-b);border-radius:7px;padding:7px 11px;font-size:12.5px;font-family:inherit;color:var(--txt);outline:none;background:#fff;margin-top:6px}
+.sub-filter-input:focus{border-color:var(--ai)}
+.sub-filter-input::placeholder{color:var(--mut)}
+.sf-chip{font-size:12px;padding:4px 10px;border-radius:14px;border:1px solid var(--ai-b);background:#fff;color:var(--ai);cursor:pointer;transition:all .15s;font-family:inherit}
+.sf-chip:hover{background:var(--ai-l)}
+.sf-chip.on{background:var(--ai);color:#fff;border-color:var(--ai);font-weight:600}
+.vote-bar-wrap{margin-top:8px}
+.vote-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+.vote-bar-label{width:60px;color:var(--sub);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vote-bar-bg{flex:1;height:7px;background:#e5e7eb;border-radius:4px;overflow:hidden}
+.vote-bar-fill{height:100%;border-radius:4px;background:var(--ai)}
+.vote-bar-pct{width:30px;text-align:right;color:var(--sub);font-size:11px;flex-shrink:0}
+
+/* ── 업무 결과 아이템 특수 스타일 */
+.task-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:5px}
+.task-status{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:10px;flex-shrink:0}
+.ts-wait{background:#eff6ff;color:#2563eb}
+.ts-progress{background:#f0fdf4;color:#16a34a}
+.ts-done{background:#f3f4f6;color:#6b7280}
+.ts-test{background:#fef9c3;color:#92400e}
+.ts-hold{background:#fdf2f8;color:#9d174d}
+.task-progress-bar{flex:1;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;min-width:60px;position:relative}
+.task-progress-fill{height:100%;border-radius:3px;background:var(--pri);max-width:100%;display:block}
+.task-progress-pct{font-size:11px;color:var(--mut);flex-shrink:0}
+.task-assignee{font-size:11.5px;color:var(--sub)}
+.task-deadline{font-size:11.5px;color:var(--mut)}
+.task-deadline.overdue{color:#dc2626;font-weight:600}
+.task-priority{font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:8px}
+.tp-high{background:#fff1f2;color:#be123c}
+.tp-normal{background:#f3f4f6;color:#6b7280}
+.tp-urgent{background:#fef2f2;color:#dc2626}
+
+/* ── 히스토리 아이템 */
+.history-item{display:flex;gap:13px;padding:12px 18px;border-bottom:1px solid #f9fafb;align-items:flex-start}
+.history-item:last-child{border-bottom:none}
+.history-line{display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:3px;flex-wrap:wrap}
+.h-from{color:var(--sub);text-decoration:line-through}
+.h-arrow{color:var(--mut);font-size:11px}
+.h-to{font-weight:700;color:var(--txt)}
+.h-who{font-size:11.5px;color:var(--mut)}
+
+/* ── 파일 내부 콘텐츠 미리보기 */
+.file-snippet{background:#f8f9ff;border-left:3px solid var(--pri-b);border-radius:0 6px 6px 0;padding:7px 10px;margin-top:5px;font-size:12px;color:var(--sub);line-height:1.6}
+.file-snippet mark{background:#fef9c3;color:inherit}
+
+/* ── 드라이브 아이콘 */
+.drive-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 6px;margin-left:4px;vertical-align:middle}
+
+/* ── 캘린더 결과 아이템 */
+.cal-item{display:flex;gap:13px;padding:14px 18px;border-bottom:1px solid #f9fafb;cursor:pointer;transition:background .12s;align-items:flex-start}
+.cal-item:last-child{border-bottom:none}
+.cal-item:hover{background:#fafafe}
+.cal-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.cal-body{flex:1;min-width:0}
+.cal-title{font-size:13.5px;font-weight:600;color:var(--txt);margin-bottom:4px}
+.cal-time{font-size:12.5px;color:var(--sub);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.cal-location{font-size:11.5px;color:var(--mut);background:#f3f4f6;border-radius:5px;padding:1px 7px;display:inline-block}
+.cal-attendees{font-size:11.5px;color:var(--mut);margin-top:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.cal-attendee-chip{background:#eff6ff;color:#2563eb;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:500}
+.cal-type-badge{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:10px;display:inline-block;margin-right:4px}
+.ct-meeting{background:#d1fae5;color:#065f46}
+.ct-leave{background:#fee2e2;color:#b91c1c}
+.ct-halfday{background:#fef9c3;color:#92400e}
+.ct-birthday{background:#fce7f3;color:#be185d}
+.inline-vote{background:#faf9ff;border:1px solid var(--ai-b);border-radius:8px;padding:10px 14px;margin-top:7px}
+.inline-vote-title{font-size:11.5px;font-weight:700;color:var(--ai);margin-bottom:8px}
+
+.task-status-clickable{cursor:pointer;transition:filter .15s}
+.task-status-clickable:hover{filter:brightness(.9);outline:2px solid rgba(109,40,217,.3);outline-offset:1px}
+.task-assignee-chip{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:var(--sub);background:#f3f4f6;border-radius:10px;padding:2px 8px;cursor:pointer;transition:all .15s;border:1px solid transparent}
+.task-assignee-chip:hover{background:#ede9fe;color:var(--ai);border-color:var(--ai-b)}
+.sf-chip-person{display:inline-flex;align-items:center}
+.sf-chip-person.on{background:var(--ai);color:#fff;border-color:var(--ai)}
+
+/* ── 채팅 검색 결과 */
+.chat-item{display:flex;gap:11px;padding:12px 18px;border-bottom:1px solid #f9fafb;cursor:pointer;transition:background .12s;align-items:flex-start}
+.chat-item:last-child{border-bottom:none}
+.chat-item:hover{background:#fafafe}
+.chat-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px}
+.chat-body{flex:1;min-width:0}
+.chat-header{display:flex;align-items:baseline;gap:7px;margin-bottom:3px;flex-wrap:wrap}
+.chat-name{font-size:13px;font-weight:700;color:var(--txt)}
+.chat-date{font-size:11.5px;color:var(--mut)}
+.chat-room{font-size:11px;color:var(--mut);background:#f3f4f6;border-radius:5px;padding:1px 6px;margin-left:auto}
+.chat-msg{font-size:13px;color:var(--sub);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;overflow:hidden;-webkit-box-orient:vertical}
+.chat-msg mark{background:#fef9c3;color:inherit;border-radius:2px;padding:0 1px}
+
+/* ── 할일 결과 */
+.todo-item{display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid #f9fafb;cursor:pointer;transition:background .12s}
+.todo-item:last-child{border-bottom:none}
+.todo-item:hover{background:#fafafe}
+.todo-status{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:10px;flex-shrink:0;white-space:nowrap}
+.todo-s-progress{background:#dcfce7;color:#16a34a}
+.todo-s-fb{background:#fce7f3;color:#be185d}
+.todo-s-wait{background:#e0f2fe;color:#0369a1}
+.todo-s-done{background:#f3f4f6;color:#6b7280}
+.todo-s-review{background:#fef3c7;color:#92400e}
+.todo-title{flex:1;font-size:13px;color:var(--txt);font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.todo-deadline{font-size:11.5px;color:var(--mut);flex-shrink:0}
+.todo-deadline.overdue{color:#dc2626;font-weight:600}
+.todo-priority{font-size:14px;flex-shrink:0}
+
+/* ── 위키 파일·업무 임베드 */
+.wiki-task-embed{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:9px 13px;margin-top:7px;display:flex;align-items:center;gap:8px;font-size:12.5px}
+.wiki-task-embed-status{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:8px;flex-shrink:0}
+.wiki-task-embed-title{color:var(--txt);font-weight:500}
+.wiki-task-embed-meta{color:var(--mut);font-size:11px;margin-left:auto;flex-shrink:0}
+
+/* ── 해시태그 모드 */
+.dd-hashtag-banner{display:flex;align-items:center;gap:8px;background:#faf9ff;border:1px solid var(--ai-b);border-radius:8px;padding:8px 12px;margin:0 0 6px;font-size:13px;color:var(--ai);font-weight:500}
+
+/* ── 파일 매칭 배지 */
+.match-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:4px;vertical-align:middle}
+.mb-name{background:#fef9c3;color:#92400e}
+.mb-content{background:#ede9fe;color:var(--ai)}
+.mb-drive{background:#d1fae5;color:#065f46}
+
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="ov" id="ov" onclick="closeDd()"></div>
+
+<header class="hd">
+  <div class="logo">flow</div>
+  <div class="sw">
+    <div class="sbox" id="sbox" onclick="openDd()">
+      <div style="display:flex;align-items:center;gap:7px;flex:1;overflow:hidden">
+        <div class="sbox-mode" id="sboxMode">✦ AI 검색</div>
+        <span class="sbox-ph" id="sph">업무, 파일, 대화를 자연어로 검색해보세요</span>
+      </div>
+      <span class="sbox-sk">alt+k / cmd+k</span>
+    </div>
+
+    <div class="dd" id="dd" style="display:none">
+      <div class="dd-top">
+        <!-- 스코프 칩 + 입력창 -->
+        <div class="dd-inp-row">
+          <div id="scopeChip"></div>
+          <input class="dd-inp" id="ddinp" placeholder="찾으실 내용을 키워드 또는 자연어로 입력하세요"
+            onkeydown="onKey(event)" oninput="onInput(event)" />
+          <button class="dd-inp-clear" id="inpClr" onclick="clearInp()" style="display:none">×</button>
+        </div>
+        <!-- 탭 필터: 컨텍스트에 따라 렌더 -->
+        <div class="dd-tabs-wrap" id="ddTabsWrap"></div>
+      </div>
+      <div class="dd-rec">
+        <div class="dd-rec-hd">
+          <span class="dd-rec-ttl">최근 검색</span>
+          <button class="dd-rec-clr" onclick="clearRec()">전체삭제</button>
+        </div>
+        <div id="recList"></div>
+      </div>
+      <div class="dd-sc">통합 검색 호출 Win : alt+k / Mac : cmd+k</div>
+    </div>
+  </div>
+  <div class="hd-icons"><span>N</span><span>W</span><span>AI</span><span>⊞</span><span>⚇</span></div>
+</header>
+
+<div class="page">
+  <!-- EMPTY -->
+  <div class="empty" id="emptyS">
+    <div class="empty-logo">flow AI 검색 · 데모</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div class="empty-hint" style="margin-bottom:0">아래 시나리오를 클릭해 각 기능을 체험해보세요</div>
+      <button id="toggleNumBtn" onclick="toggleFeedbackNums()" style="font-size:11.5px;color:var(--mut);background:var(--bg);border:1px solid var(--bdr);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">① 피드백 번호 숨기기</button>
+    </div>
+
+    <!-- 1행: 정보·문서 / 일정·연락 / 업무 -->
+    <div class="demo-grid">
+      <div class="demo-group">
+        <div class="demo-group-title">🔍 정보·문서 조회 <span class="num-badge-sm">1</span><span class="num-badge-sm">2</span><span class="num-badge-sm">12</span><span class="num-badge-sm">13</span><span class="num-badge-sm">14</span></div>
+        <button class="demo-btn" onclick="qs('신년사',null,'올해 신년사 내용이 뭐야?')">올해 신년사 내용이 뭐야?</button>
+        <button class="demo-btn" onclick="qs('온트너',null,'온트너 관련해서 정리해줘')">온트너 관련해서 정리해줘</button>
+        <button class="demo-btn" onclick="qs('계약서 2026',null,'2026년 계약서 관련 내용 찾아줘')">2026년 계약서 관련 내용 찾아줘</button>
+        <button class="demo-btn" onclick="qs('위키 검색: 개인정보처리방침','wiki','개인정보처리방침 어디 있어?')">개인정보처리방침 어디 있어?  <span class="num-badge">12</span></button>
+        <button class="demo-btn" onclick="qs('위키 검색: 파일 첨부 문서','wiki','위키에 첨부된 파일 찾아줘')">위키에 첨부된 파일 찾아줘  <span class="num-badge">13</span></button>
+        <button class="demo-btn" onclick="qs('위키 검색: 업무 연결 콘텐츠','wiki','위키에 연결된 업무·게시글 보여줘')">위키에 연결된 업무·게시글  <span class="num-badge">14</span></button>
+      </div>
+      <div class="demo-group">
+        <div class="demo-group-title">📅 일정·연락 <span class="num-badge-sm">3</span></div>
+        <button class="demo-btn" onclick="qs('캘린더 검색: 다음 주 일정','cal','다음 주 일정 정리해줘')">다음 주 일정 정리해줘</button>
+        <button class="demo-btn" onclick="qs('캘린더 검색: 신주경 참석 일정','cal','신주경 참석하는 회의 언제야?')">신주경 참석하는 회의 언제야?  <span class="num-badge">3</span></button>
+        <button class="demo-btn" onclick="qs('캘린더 검색: 이번 주 오전 회의','cal','이번 주 오전에 잡힌 회의 알려줘')">이번 주 오전 잡힌 회의 알려줘  <span class="num-badge">3</span></button>
+        <button class="demo-btn" onclick="qs('이메일 검색: 계약 관련 메일','email','계약 관련 이메일 정리해줘')">계약 관련 이메일 정리해줘</button>
+        <button class="demo-btn" onclick="qs('이메일 검색: 신규 입사 안내','email','신규 입사 안내 이메일 있어?')">신규 입사 안내 이메일 있어?</button>
+        <button class="demo-btn" onclick="qs('이메일 검색: 미팅 리마인더','email','오늘 미팅 리마인더 온 거 있어?')">오늘 미팅 리마인더 온 거 있어?</button>
+      </div>
+      <div class="demo-group">
+        <div class="demo-group-title">📋 업무 · 할일 <span class="num-badge-sm">2</span><span class="num-badge-sm">5</span></div>
+        <button class="demo-btn" onclick="qs('업무 검색: 진행 중 이번 주 마감',null,'이번 주 마감인 진행 중 업무 알려줘')">이번 주 마감인 진행 중 업무  <span class="num-badge">2</span></button>
+        <button class="demo-btn" onclick="qs('업무 검색: 우성호 담당 업무',null,'우성호 책임이 담당 중인 업무 뭐야?')">우성호 책임 담당 업무 뭐야?  <span class="num-badge">2</span></button>
+        <button class="demo-btn" onclick="qs('업무 검색: 긴급 우선순위',null,'긴급 우선순위 업무 다 보여줘')">긴급 우선순위 업무 다 보여줘  <span class="num-badge">2</span></button>
+        <button class="demo-btn" onclick="qs('할일 검색: 내 담당 지연 업무',null,'내가 담당한 지연된 할일 알려줘')">내가 담당한 지연된 할일  <span class="num-badge">5</span></button>
+      </div>
+    </div>
+
+    <!-- 2행: 히스토리·투표 / 파일·채팅·알림 / 특수·실패 -->
+    <div class="demo-grid" style="margin-top:0">
+      <div class="demo-group">
+        <div class="demo-group-title">🕐 히스토리 · 투표 <span class="num-badge-sm">4</span><span class="num-badge-sm">11</span></div>
+        <button class="demo-btn" onclick="qs('히스토리 검색: 온트너 상태 변경',null,'온트너 업무 상태 변경 이력 보여줘')">온트너 상태 변경 이력  <span class="num-badge">11</span></button>
+        <button class="demo-btn" onclick="qs('투표 결과: 출시 일정 투표',null,'온트너 출시 일정 투표 결과 어떻게 됐어?')">출시 일정 투표 결과  <span class="num-badge">4</span></button>
+        <button class="demo-btn" onclick="qs('투표 결과: 코드 리뷰 방식',null,'코드 리뷰 방식 투표 결과 알려줘')">코드 리뷰 방식 투표 결과  <span class="num-badge">4</span></button>
+      </div>
+      <div class="demo-group">
+        <div class="demo-group-title">📂 파일 · 채팅 · 알림 <span class="num-badge-sm">1</span><span class="num-badge-sm">6</span><span class="num-badge-sm">7</span><span class="num-badge-sm">8</span><span class="num-badge-sm">9</span></div>
+        <button class="demo-btn" onclick="qs('파일 내부 검색: 계약서 조항',null,'계약서 파일 내 조항 검색해줘')">계약서 파일 내 조항 검색  <span class="num-badge">6</span></button>
+        <button class="demo-btn" onclick="qs('파일 내부 검색: APK 빌드',null,'APK 빌드 파일 어디 있어?')">댓글 첨부 APK 빌드  <span class="num-badge">7</span></button>
+        <button class="demo-btn" onclick="qs('드라이브 검색: flow AI 기획','drive','구글 드라이브에서 flow AI 기획 찾아줘')">구글 드라이브 flow AI 기획  <span class="num-badge">8</span></button>
+        <button class="demo-btn" onclick="qs('채팅 검색: AI 업데이트',null,'채팅에서 AI 업데이트 얘기 찾아줘')">채팅에서 AI 업데이트 찾아줘  <span class="num-badge">1</span></button>
+        <button class="demo-btn" onclick="qs('알림 검색: 온트너',null,'온트너 관련 알림 보여줘')">온트너 관련 알림 보여줘  <span class="num-badge">9</span></button>
+      </div>
+      <div class="demo-group">
+        <div class="demo-group-title">✦ 특수 · 실패 <span class="num-badge-sm">10</span></div>
+        <button class="demo-btn" style="background:#faf5ff;border-color:#e9d5ff;color:#6d28d9" onclick="openHashDemo('#온트너')"># 해시태그 검색 — #온트너  <span class="num-badge">10</span></button>
+        <button class="demo-btn" style="background:#faf5ff;border-color:#e9d5ff;color:#6d28d9" onclick="openHashDemo('#계약서')"># 해시태그 검색 — #계약서  <span class="num-badge">10</span></button>
+        <div style="height:8px"></div>
+        <button class="demo-btn fail" onclick="qs('FAIL_자음',null,'ㅁㄹㅇㄴㄹㄷ')">자음만 입력 — 재시도 후 중지</button>
+        <button class="demo-btn fail" onclick="qs('FAIL_키워드',null,'xk93z_404_notfound')">존재하지 않는 키워드 — 결과 없음</button>
+        <button class="demo-btn fail" onclick="qs('FAIL_중지',null,'모든 게시물 파일 채팅 전체')">너무 광범위 — 즉시 중지</button>
+      </div>
+    </div>
+
+    <div style="padding:10px 16px;background:#f9fafb;border-radius:10px;font-size:13px;color:var(--sub);text-align:center">
+      💡 버튼 옆 <strong>①~⑭</strong>는 피드백 항목 번호 &nbsp;·&nbsp; 검색창에 자연어로 직접 입력해도 동작합니다
+    </div>
+  </div>
+
+<!-- 컨텍스트 전환 토글 (데모 전용) -->
+<div class="ctx-toggle">
+  <div class="ctx-title">🎛 컨텍스트 전환 (데모)</div>
+  <button class="ctx-btn" id="ctxGlobal" onclick="setCtx('global')">🌐 글로벌 검색</button>
+  <button class="ctx-btn" id="ctxProject" onclick="setCtx('project')">📁 프로젝트 내부 검색</button>
+</div>
+
+  <!-- RESULT -->
+  <div id="resS" style="display:none">
+    <div class="rh">
+      <button class="back" onclick="goBack()">← 뒤로가기</button>
+      <div class="rtit" id="rtit"></div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="rtabs" id="rtabsEl"></div>
+
+    <!-- Content area -->
+    <div id="contentArea"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════ STATE
+let aiOn   = true;
+let extTab = null;  // 'wiki'|'cal'|'email'|null
+let regTab = null;
+let curQ   = '';
+let curDisplayQ = '';
+let curTab = 'search';
+let tmr    = null;
+let recents = ['온트너','신년사','계약서 2026'];
+let ctx    = 'global'; // 'global' | 'project'
+const PROJECT_NAME = '[PM] flow AI 신규 / 개선 건';
+
+const SORT_OPTS   = ['관련도순','최신순','오래된순'];
+const PERIOD_OPTS = ['전체','오늘','일주일','1개월','6개월','직접설정'];
+let curSort = '관련도순';
+let curPeriod = '전체';
+let curPostType = '전체';    // 게시물 유형 필터
+let curTaskStatus = [];      // 업무 상태
+let hashtagMode = false;     // 해시태그 검색 모드
+
+// ═══════════════════════════════════════════ SCENARIOS
+const SC = {
+  '신년사':{
+    mode:'ai', masked:0,
+    cond:['통합 탭','최신순'], kw:['신년사','2026년 병오년','새해 인사'],
+    stats:{total:119, proj:1, post:55, comment:10, chat:42, file:8, chatfile:2, wiki:0, cal:0, email:1},
+    sum:`플로우에서 검색된 신년사 관련 내용을 정리했습니다.
+
+1. 공식 신년사
+ · 2026년 병오년 신년사는 2025년 한 해를 돌아보며 구성원들의 노고에 감사 인사를 전하고, 2026년에는 회사의 성장과 함께하길 바라는 메시지를 담고 있습니다. <ic>[공지] 마드라스체크_공지사항 '26.01</ic>
+ · 같은 내용이 이메일로도 전달되었습니다. <ic>[이메일] CEO 전사 발송 '26.01.01</ic>
+
+2. 신년 경영 방침
+ · 2026년 신년 경영 방침 공유에서 올해 주요 전략 방향과 팀별 목표가 안내되었습니다. <ic>[공지] 마드라스체크_공지사항 '26.01.02</ic>
+
+3. 구성원 반응
+ · 전사 채팅에서 신년사에 대한 반응과 새해 인사 메시지가 다수 확인됩니다. <ic>[채팅] 마드라스체크 전체 '26.01.01</ic>`,
+    srcs:[
+      {icon:'📝',cls:'sb-post',lbl:'글',proj:'마드라스체크_공지사항',date:"'26.01.01",title:'🐴 2026년 병오년(丙午年) 신년사',prev:'2025년이 지나고 2026년 새해가 밝았습니다. 새해 복 많이 받으십시오. 2026년에는 작년보다 더 좋은 일, 더 행복한 일만 가득하시길...',author:'June Lee 작성',ext:false,dest:'게시물로 이동'},
+      {icon:'📝',cls:'sb-post',lbl:'글',proj:'마드라스체크_공지사항',date:"'26.01.02",title:'2026 신년 경영 방침 공유',prev:'올해도 우리 모두 함께 성장하는 한 해가 되길 바랍니다. 주요 경영 방침은 다음과 같습니다...',author:'대표이사 작성',ext:false,dest:'게시물로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'전사 공지',date:"'26.01.01",title:'[전사] 2026년 신년 인사 말씀드립니다',prev:'대표이사입니다. 새해를 맞아 임직원 여러분께 감사의 인사를 전합니다...',author:'CEO 발송',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'○',cls:'sb-chat',lbl:'채팅',proj:'마드라스체크 전체',date:"'26.01.01",title:'"신년사 잘 받았습니다 🎉"',prev:'대표님 신년사 읽었습니다. 올해도 잘 부탁드립니다! 새해 복 많이 받으세요.',author:'김지훈 작성',ext:false,dest:'채팅으로 이동'},
+    ],
+    browse:{
+      proj:[],
+      post:[
+        {icon:'📝',ico_bg:'#f0fdf4',title:'🐴 2026년 병오년(丙午年) 신년사',preview:'2025년이 지나고 2026년 새해가 밝았습니다. 새해 복 많이 받으십시오...',project:'마드라스체크_공지사항',author:'June Lee',date:"'26.01.01",type:'글'},
+        {icon:'📝',ico_bg:'#f0fdf4',title:'2026 신년 경영 방침 공유',preview:'올해도 우리 모두 함께 성장하는 한 해가 되길 바랍니다...',project:'마드라스체크_공지사항',author:'대표이사',date:"'26.01.02",type:'글'},
+      ],
+      chat:[
+        {icon:'○',ico_bg:'#eff6ff',title:'"신년사 잘 받았습니다 🎉"',preview:'대표님 신년사 읽었습니다. 올해도 잘 부탁드립니다!',project:'마드라스체크 전체 채팅',author:'김지훈',date:"'26.01.01",type:'채팅'},
+      ],
+    }
+  },
+  '온트너':{
+    mode:'ai', masked:0,
+    cond:['통합 탭','관련도순'], kw:['온트너','온트너 앱'],
+    stats:{total:83, proj:4, post:32, comment:9, chat:28, file:7, chatfile:2, wiki:0, cal:0, email:0},
+    sum:`온트너 관련 내용을 플로우에서 정리했습니다.
+
+1. 앱 개발·출시 프로젝트
+ · CJ ENM 커머스와 함께 진행 중인 화이트라벨링 앱 개발 프로젝트입니다. <ic>[프로젝트] CJ ENM X 플로우 '25.11</ic>
+ · 출시 시점: 2026년 2월 말~3월 초(기획) / 3월 초중순 QA 기준으로 조정 중입니다.
+
+2. 온트너 X 플로우 내부 추진/운영 관련 프로젝트
+ · 내부 추진방(사업/계약/분운) SLA에 정리되어 있습니다. <ic>[프로젝트] 온트너 X 플로우 내부 추진방 '25.09</ic>
+
+3. 주요 기술 이슈
+ · 온트너 마스터 계정 - 로그인된 특정 디바이스 로그아웃 방법이 논의 중입니다. <ic>[게시글] 온트너 앱 개발 프로젝트 '26.03.25</ic>
+ · 모바일 이미지 리소스 요청, 피그마 제공 등 디자인 관련 이슈도 있습니다. <ic>[업무] 온트너 앱 개발 프로젝트 '25.11.03</ic>`,
+    srcs:[
+      {icon:'🗂️',cls:'sb-task',lbl:'프로젝트',proj:'온트너 X 플로우',date:"'25.09",title:'[CJ ENM 커머스 X 플로우] 온트너 X 플로우 내부 추진방',prev:'온트너 앱 개발 | 출시 시점: 2026년 3월 초중순 | 주요 키워드: QA, 앱, 모바일, 탭',author:'유민호 외 15명',ext:false,dest:'프로젝트로 이동'},
+      {icon:'🗂️',cls:'sb-task',lbl:'프로젝트',proj:'CJ ENM 커머스 X 플로우',date:"'25.11",title:'[CJ ENM 커머스 X 플로우] 온트너 앱 개발 프로젝트',prev:'온트너 앱 개발 | 출시 시점: 2026년 2월 말~3월 초 | 주요 키워드: API 제공 및 연동, 세션 유지...',author:'양용선 외 21명',ext:false,dest:'프로젝트로 이동'},
+      {icon:'📝',cls:'sb-post',lbl:'글',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'온트너 마스터 계정 - 특정 디바이스 로그아웃 방법',prev:'현재는 온트너가 운영 서버만 바라보고 있고...',author:'우성호 작성',ext:false,dest:'게시물로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'25.11.03",title:'[온트너] 온트너 피그마 제공',prev:'API 개발, 문서 작성 및 온트너 화면 흐름 등 이해도를 높이기 위해 관련 피그마 자료를 요청드립니다.',author:'우성호 작성',status:'완료',statusCls:'ts-done',assignee:'우성호',deadline:'',ext:false,dest:'업무로 이동'},
+    ],
+    browse:{
+      proj:[
+        {icon:'🗂️',ico_bg:'#eff6ff',title:'온트너 X 플로우 Hotline',preview:'유민호 외 7명  |  최근 업데이트 2025-11-04',project:'',author:'',date:'2025-11-04',type:'프로젝트'},
+        {icon:'🗂️',ico_bg:'#eff6ff',title:'온트너 X 플로우 내부 추진방',preview:'유민호 외 15명  |  최근 업데이트 2026-03-27',project:'',author:'',date:'2026-03-27',type:'프로젝트'},
+        {icon:'🗂️',ico_bg:'#eff6ff',title:'[CJ ENM 커머스 X 플로우] 온트너 🎪 QA 🎪',preview:'서동석 연차, 양용선 외 13명  |  최근 업데이트 2026-03-26',project:'',author:'',date:'2026-03-26',type:'프로젝트'},
+        {icon:'🗂️',ico_bg:'#eff6ff',title:'[CJ ENM 커머스 X 플로우] 온트너 앱 개발 프로젝트',preview:'양용선, 우성호 외 21명  |  최근 업데이트 2026-03-27',project:'',author:'',date:'2026-03-27',type:'프로젝트'},
+      ],
+      post:[
+        {icon:'📋',ico_bg:'#fdf4ff',title:'[온트너] 온트너 피그마 제공',preview:'API 개발, 문서 작성 및 온트너 화면 흐름 등 이해도를 높이기 위해 관련 피그마 자료를 요청드립니다. 댓글에 관련 자료 첨부해주시면 감사드리겠습니다.',project:'[CJ ENM 커머스 X 플로우] 온트너 앱 개발 프로젝트',author:'우성호',date:'2025-11-03 11:22',type:'업무'},
+        {icon:'📋',ico_bg:'#fdf4ff',title:'[온트너] 모바일 이미지 리소스 요청',preview:'온트너 모바일 앱에서 사용할 다음과 같은 리소스와 정책이 필요합니다. - 앱 아이콘: 온트너 앱 아이콘 - 인트로: 온트너 앱 실행시 보여질 첫 화면 스플래시',project:'[CJ ENM 커머스 X 플로우] 온트너 앱 개발 프로젝트',author:'신주경',date:'2025-11-21 11:16',type:'업무'},
+        {icon:'📋',ico_bg:'#fdf4ff',title:'온트너',preview:'',project:'[CJ ENM 커머스 X 플로우] 온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25 14:57',type:'업무'},
+        {icon:'📋',ico_bg:'#fdf4ff',title:'[온트너] 플로우 연동',preview:'플로우 → 온트너 연동 관련 업무내용입니다.',project:'[CJ ENM 커머스 X 플로우] 온트너 앱 개발 프로젝트',author:'조중문',date:'2025-11-10 16:07',type:'업무'},
+        {icon:'📋',ico_bg:'#fdf4ff',title:'[요청] 보안성검사 대비 리캡차 비활성화',preview:'온트너 보안성검사 중 리캡차에 의해 보안성검사를 할 수 없는 이슈가 있어서 기능키로 리캡차 비활성화 기능을 만들어 개선. 기능키: ONTNER_RECAPTCHA',project:'[CJ ENM 커머스 X 플로우] 온트너 🎪 QA 🎪',author:'우성호',date:'2026-02-23 11:55',type:'업무'},
+        {icon:'📋',ico_bg:'#fdf4ff',title:'[AOS]_ONTNER_1.0.0',preview:'온트너',project:'[PM] 앱 테스트 요청',author:'서동석',date:'2026-01-21 15:37',type:'업무'},
+        {icon:'📋',ico_bg:'#fdf4ff',title:'[SaaS] 온트너 QA 서버 통합 테스트',preview:'온트너 QA 서버 환경에서 통합 테스트를 진행합니다.',project:'[CJ ENM 커머스 X 플로우] 온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-27 09:00',type:'업무'},
+        {icon:'📅',ico_bg:'#fff1f2',title:'[멕시코] CJ 온트너 - 품질팀 리뷰',preview:'CJ 온트너 QA를 위한 리뷰. 관련 업무:[SaaS] CJ 온트너 https://flow.team/l/1Ny2o',project:'[공유] 회의실 예약 - 14F',author:'우성호',date:'2026-01-30 17:35',type:'일정'},
+        {icon:'📋',ico_bg:'#fdf4ff',title:'[온트너x플로우] 로그인 화면 UI/UX 확인 필요사항',preview:'로그인 페이지에서 사용할 이미지 — 푸시 아이콘 — 틴트 컬러. 조기완 서동석 연차 이외 다른 요소가 필요하면 하위업무로 요청 부탁드립니다.',project:'[CJ ENM 커머스 X 플로우] 온트너 앱 개발 프로젝트',author:'조기완 +3',date:'2026-01-13 15:37',type:'업무'},
+      ],
+    }
+  },
+  '해시태그: 계약서':{
+    mode:'ai', masked:0,
+    cond:['통합 탭','최신순'], kw:['#계약서'],
+    stats:{total:14, proj:0, post:3, comment:0, chat:2, file:3, cal:2, email:4},
+    sum:`#계약서 태그가 달린 항목을 플로우·캘린더·이메일에서 정리했습니다.
+
+1. 📅 캘린더
+ · 계약서 리뷰 — 4월 3일(목) 오전 10시, 법무팀 회의실. <ic>[캘린더] 법무팀 '26.04.03</ic>
+ · 계약서 서명 미팅 — 4월 7일(월) 오후 2시, 삼성화재 담당자 참석. <ic>[캘린더] 삼성화재 프로젝트 '26.04.07</ic>
+
+2. ✉️ 이메일
+ · [검토 요청] 삼성화재 서비스 계약서 v3 — 법무팀 최종 검토 요청. <ic>[이메일] 법무팀 이지현 '26.03.28</ic>
+ · [회신] 계약서 수정 의견 — 계약 기간·SLA 조항 수정 의견 회신. <ic>[이메일] 삼성화재 김담당 '26.03.29</ic>
+ · [서명 요청] 현대자동차 협력사 계약 갱신 — DocuSign 서명 링크 포함. <ic>[이메일] 현대자동차 이담당 '26.03.25</ic>
+ · [리마인더] 계약서 제출 기한 — 이번 주 금요일 오후 6시까지 제출 필요. <ic>[이메일] 법무팀 자동발송 '26.03.31</ic>
+
+3. 📋 게시물·파일
+ · 계약서 2026 최종 검토 요청 — 주요 조항 수정 의견 공유. <ic>[업무] 삼성화재 프로젝트 '26.01.20</ic>
+ · 현대_협력사계약_2026.pdf — SLA 조건·협력 범위 포함. <ic>[파일] 현대자동차 프로젝트 '26.01.15</ic>
+ · 삼성화재_서비스계약_2026.docx — 서비스 제공 범위·비용 조건. <ic>[파일] 삼성화재 프로젝트 '26.02.03</ic>
+ · 계약서 검토의견_법무.gdoc — 법무팀 검토의견 문서. <ic>[파일] 법무팀 드라이브 '26.01.18</ic>`,
+    srcs:[
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'법무팀',date:"'26.04.03",title:'계약서 리뷰',prev:'4월 3일(목) 10:00 | 법무팀 회의실 | 이지현·박서연·조기완 참석',author:'이지현 등록',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'삼성화재 프로젝트',date:"'26.04.07",title:'계약서 서명 미팅',prev:'4월 7일(월) 14:00 | 삼성화재 담당자 참석 | 오프라인',author:'박서연 등록',ext:true,dest:'캘린더로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'법무팀 이지현',date:"'26.03.28",title:'[검토 요청] 삼성화재 서비스 계약서 v3',prev:'법무팀의 최종 검토를 요청드립니다. 특히 7조 SLA 조항과 위약금 조항 확인 부탁드립니다.',author:'이지현 발송',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'삼성화재 김담당',date:"'26.03.29",title:'[회신] 계약서 수정 의견',prev:'계약 기간을 1년에서 2년으로, SLA 조항 중 99.5% 가동률 부분에 수정 의견을 제안드립니다.',author:'삼성화재 김담당 발송',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'현대자동차 이담당',date:"'26.03.25",title:'[서명 요청] 현대자동차 협력사 계약 갱신',prev:'DocuSign 서명을 완료해 주시기 바랍니다. 링크 유효기간은 4월 5일까지입니다.',author:'현대자동차 이담당 발송',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'법무팀 자동발송',date:"'26.03.31",title:'[리마인더] 계약서 제출 기한',prev:'이번 주 금요일 오후 6시까지 삼성화재 계약서를 제출해 주세요.',author:'법무팀 자동발송',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'삼성화재 프로젝트',date:"'26.01.20",title:'계약서 2026 최종 검토 요청',prev:'첨부된 계약서 2026년 버전 법무 검토 부탁드립니다.',author:'박서연 작성',status:'완료',statusCls:'ts-done',assignee:'박서연',deadline:'',ext:false,dest:'업무로 이동'},
+      {icon:'📄',cls:'sb-file',lbl:'파일',proj:'현대자동차 프로젝트',date:"'26.01.15",title:'현대_협력사계약_2026.pdf',prev:'본 계약서는 현대자동차㈜와 마드라스체크㈜ 간의 협력 관계에 관한 사항을 규정합니다.',author:'이지현 업로드',ext:false,dest:'파일로 이동'},
+      {icon:'📄',cls:'sb-file',lbl:'파일',proj:'삼성화재 프로젝트',date:"'26.02.03",title:'삼성화재_서비스계약_2026.docx',prev:'서비스 제공 범위, 비용, 지급 조건에 관한 계약 내용입니다.',author:'김민준 업로드',ext:false,dest:'파일로 이동'},
+      {icon:'📄',cls:'sb-file',lbl:'파일',proj:'법무팀 드라이브',date:"'26.01.18",title:'계약서 검토의견_법무.gdoc',prev:'법무팀 검토의견 문서. 계약서 조항별 수정 의견 포함.',author:'이지현 공유',ext:true,dest:'구글 드라이브에서 열기'},
+    ],
+    browse:{
+      post:[
+        {icon:'📋',ico_bg:'#fdf4ff',title:'계약서 2026 최종 검토 요청',preview:'첨부된 계약서 2026년 버전 법무 검토 부탁드립니다. 서명 기한이 이번 주 금요일입니다.',project:'삼성화재 프로젝트',author:'박서연',date:'2026-01-20 14:30',type:'업무',status:'완료',statusCls:'ts-done',assignee:'박서연'},
+        {icon:'📋',ico_bg:'#fdf4ff',title:'계약 갱신 협의',preview:'이번 주 금요일까지 계약서 검토 및 서명 완료 필요.',project:'삼성화재 프로젝트',author:'박제원',date:'2026-03-20 09:00',type:'업무',status:'진행',statusCls:'ts-progress',assignee:'박제원'},
+        {icon:'≡',ico_bg:'#f0fdf4',title:'[공지] 계약서 작성 양식 가이드 업데이트',preview:'2026년 계약서 표준 양식이 업데이트되었습니다. 하단 첨부 파일을 참고해주세요.',project:'법무·컴플라이언스',author:'이지현',date:'2026-02-10 11:00',type:'글'},
+      ],
+      cal:[
+        {icon:'📅',ico_bg:'#fff1f2',title:'계약서 리뷰',preview:'법무팀 회의실 | 이지현·박서연·조기완',project:'법무팀',author:'이지현',date:'2026-04-03 10:00',type:'캘린더',calType:'ct-meeting',calAttendees:['이지현','박서연','조기완']},
+        {icon:'📅',ico_bg:'#fff1f2',title:'계약서 서명 미팅',preview:'삼성화재 오프라인 미팅 | 담당자 참석',project:'삼성화재 프로젝트',author:'박서연',date:'2026-04-07 14:00',type:'캘린더',calType:'ct-meeting',calAttendees:['박서연','삼성화재 김담당']},
+      ],
+      file:[
+        {icon:'📄',ico_bg:'#fef9c3',title:'현대_협력사계약_2026.pdf',preview:'본 계약서는 현대자동차㈜와 마드라스체크㈜ 간의 협력 관계에 관한 사항을 규정합니다.',project:'현대자동차 프로젝트',author:'이지현 업로드',date:'2026-01-15',type:'파일',matchType:'content',snippet:'협력 관계 및 SLA 조건, 계약 기간, 위약금 조항 포함'},
+        {icon:'📄',ico_bg:'#fef9c3',title:'삼성화재_서비스계약_2026.docx',preview:'서비스 제공 범위, 비용, 지급 조건에 관한 계약 내용입니다.',project:'삼성화재 프로젝트',author:'김민준 업로드',date:'2026-02-03',type:'파일',matchType:'content',snippet:'99.5% SLA 가동률, 월정액 비용 및 추가 비용 조건 포함'},
+        {icon:'📄',ico_bg:'#d1fae5',title:'계약서 검토의견_법무.gdoc',preview:'법무팀 검토의견 문서. 계약서 조항별 수정 의견 포함.',project:'법무팀 드라이브',author:'이지현 공유',date:'2026-01-18',type:'파일',matchType:'drive'},
+      ],
+    }
+  },
+  '계약서 2026':{
+    mode:'ai', masked:3,
+    cond:['통합 탭','최신순'], kw:['계약서','2026'],
+    stats:{total:47, proj:3, post:12, comment:5, chat:18, file:9, chatfile:0, wiki:0, cal:0, email:0},
+    sum:`2026년 계약서 관련 내용을 정리했습니다. (3개 항목에 보안 마스킹 적용됨)
+
+1. 주요 계약 파일
+ · 현대자동차 협력사 계약 갱신 — 협력 관계 및 SLA 조건 포함. <ic>[파일] 현대_협력사계약_2026.pdf '26.01</ic>
+ · 삼성화재 서비스 계약서 — 서비스 제공 범위, 비용, 지급 조건. <ic>[파일] 삼성화재_서비스계약_2026.docx '26.02</ic>
+
+2. 계약 관련 내부 논의
+ · 법무팀 계약서 검토 요청이 진행되었고 주요 조항 수정 의견이 공유되었습니다. <ic>[업무] 삼성화재 프로젝트 '26.01.20</ic>
+
+3. 채팅 논의
+ · 계약 조건 및 서명 일정 관련 채팅이 법무팀 채널에 다수 존재합니다. <ic>[채팅] 법무팀 채널 '26.01.22</ic>`,
+    srcs:[
+      {icon:'📄',cls:'sb-file',lbl:'파일',proj:'현대자동차 프로젝트',date:"'26.01.15",title:'현대_협력사계약_2026.pdf',prev:'본 계약서는 현대자동차㈜와 마드라스체크㈜ 간의 협력 관계에 관한 사항을 규정합니다...',author:'이지현 업로드',ext:false,dest:'파일로 이동'},
+      {icon:'📄',cls:'sb-file',lbl:'파일',proj:'삼성화재 프로젝트',date:"'26.02.03",title:'삼성화재_서비스계약_2026.docx',prev:'서비스 제공 범위, 비용, 지급 조건에 관한 계약 내용입니다...',author:'김민준 업로드',ext:false,dest:'파일로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'삼성화재 프로젝트',date:"'26.01.20",title:'계약서 2026 최종 검토 요청',prev:'첨부된 계약서 2026년 버전 법무 검토 부탁드립니다. 서명 기한이 이번 주 금요일입니다.',author:'박서연 작성',status:'완료',statusCls:'ts-done',assignee:'박서연',deadline:'',ext:false,dest:'업무로 이동'},
+      {icon:'○',cls:'sb-chat',lbl:'채팅',proj:'법무팀 채널',date:"'26.01.22",title:'계약 서명 일정 조율',prev:'삼성화재 담당자 측에서 2월 초까지 서명 완료 요청이 왔습니다. 일정 조율 부탁드립니다.',author:'이지현 작성',ext:false,dest:'채팅으로 이동'},
+    ],
+    browse:{
+      proj:[],
+      post:[
+        {icon:'📋',ico_bg:'#fdf4ff',title:'계약서 2026 최종 검토 요청',preview:'첨부된 계약서 2026년 버전 법무 검토 부탁드립니다.',project:'삼성화재 프로젝트',author:'박서연',date:'2026-01-20',type:'업무'},
+      ],
+      file:[
+        {icon:'📄',ico_bg:'#fef9c3',title:'현대_협력사계약_2026.pdf',preview:'본 계약서는 현대자동차㈜와 마드라스체크㈜ 간의 협력 관계에 관한 사항을 규정합니다.',project:'현대자동차 프로젝트',author:'이지현 업로드',date:'2026-01-15',type:'파일',matchType:'name'},
+        {icon:'📄',ico_bg:'#fef9c3',title:'삼성화재_서비스계약_2026.docx',preview:'서비스 제공 범위, 비용, 지급 조건에 관한 계약 내용입니다.',project:'삼성화재 프로젝트',author:'김민준 업로드',date:'2026-02-03',type:'파일',matchType:'content'},
+        {icon:'📄',ico_bg:'#d1fae5',title:'계약서 검토의견_법무.gdoc',preview:'구글 드라이브 — 법무팀 검토의견 문서. "계약서"가 제목에 포함됨.',project:'법무팀 드라이브',author:'이지현 공유',date:'2026-01-18',type:'파일',matchType:'drive'},
+      ],
+    }
+  },
+  '위키 검색: 개인정보처리방침':{
+    mode:'wiki', masked:0,
+    cond:['위키','관련도순'], kw:['개인정보처리방침','이용약관'],
+    stats:{total:5, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:5, cal:0, email:0},
+    sum:`위키에서 개인정보처리방침 관련 문서를 찾았습니다.
+
+1. 개정 가이드
+ · 개인정보처리방침 개정 가이드 2026에 2026년 개정 절차, 변경사항, 시행일(2026.04.01)이 정리되어 있습니다. <ic>[위키] 법무·컴플라이언스 '26.02</ic>
+
+2. 서비스별 처리방침
+ · 온트너 앱 개인정보처리방침 v2.1에 수집 항목, 이용목적, 보유기간이 업데이트되어 있습니다. <ic>[위키] 온트너 앱 '26.02</ic>
+
+3. 내부 지침
+ · 개인정보 처리 내부 지침 v3 에 임직원 준수사항 및 위반 시 처리 절차가 명시되어 있습니다. <ic>[위키] 플로우 운영 '25.11</ic>`,
+    srcs:[
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'법무·컴플라이언스',date:"'26.02",title:'개인정보처리방침 개정 가이드 2026',prev:'2026년 개정 절차 및 주요 변경사항 안내. 시행일: 2026.04.01',author:'법무팀 작성',ext:true,dest:'위키 페이지로 이동'},
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'온트너 앱',date:"'26.02",title:'온트너 앱 개인정보처리방침 v2.1',prev:'수집하는 개인정보 항목, 수집 및 이용목적, 보유 및 이용기간 업데이트...',author:'개인정보보호팀 작성',ext:true,dest:'위키 페이지로 이동'},
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'플로우 운영',date:"'25.11",title:'개인정보 처리 내부 지침 v3',prev:'임직원 개인정보 처리 원칙 및 내부 지침. 위반 시 처리 절차 포함.',author:'준법팀 작성',ext:true,dest:'위키 페이지로 이동'},
+    ], browse:{}
+  },
+  '위키 검색: 온보딩 가이드':{
+    mode:'wiki', masked:0,
+    cond:['위키','관련도순'], kw:['온보딩','신규 입사','가이드'],
+    stats:{total:4, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:4, cal:0, email:0},
+    sum:`위키에서 온보딩 관련 문서를 찾았습니다.
+
+1. 신규 입사자 가이드
+ · 신규 입사자 온보딩 가이드 v3에 입사 첫날부터 1개월까지의 체크리스트, 필수 계정 신청, 팀별 담당자가 정리되어 있습니다. <ic>[위키] HR팀 '26.01</ic>
+
+2. 협업 툴 안내
+ · 협업 툴 사용 가이드에 flow, Figma, Google Workspace 기본 사용법과 계정 신청 방법이 안내되어 있습니다. <ic>[위키] IT 운영 '25.12</ic>
+
+3. 문화·규범
+ · 마드라스체크 조직 문화 가이드 에 회사 핵심가치, 커뮤니케이션 원칙, 회의 문화가 정리되어 있습니다. <ic>[위키] HR팀 '25.10</ic>`,
+    srcs:[
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'HR팀',date:"'26.01",title:'신규 입사자 온보딩 가이드 v3',prev:'입사 첫날 체크리스트, 필수 시스템 계정 신청, 팀별 온보딩 담당자 안내.',author:'HR팀 작성',ext:true,dest:'위키 페이지로 이동'},
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'IT 운영',date:"'25.12",title:'협업 툴 사용 가이드',prev:'flow, Figma, Notion, Google Workspace 기본 사용법 및 계정 신청 방법.',author:'IT운영팀 작성',ext:true,dest:'위키 페이지로 이동'},
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'HR팀',date:"'25.10",title:'마드라스체크 조직 문화 가이드',prev:'핵심가치, 커뮤니케이션 원칙, 회의 문화, 피드백 방식 안내.',author:'HR팀 작성',ext:true,dest:'위키 페이지로 이동'},
+    ], browse:{}
+  },
+  '위키 검색: API 연동 정책':{
+    mode:'wiki', masked:0,
+    cond:['위키','관련도순'], kw:['API','연동','정책','보안'],
+    stats:{total:3, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:3, cal:0, email:0},
+    sum:`위키에서 API 연동 관련 정책 문서를 찾았습니다.
+
+1. 외부 API 보안 정책
+ · 외부 API 연동 보안 정책 v2에 OAuth 2.0 인증 필수, API 키 관리 기준, 데이터 전송 암호화 정책이 정리되어 있습니다. <ic>[위키] 보안팀 '26.01</ic>
+
+2. API 설계 가이드
+ · REST API 설계 가이드에 엔드포인트 명명 규칙, 에러 코드 체계, 버저닝 정책이 안내되어 있습니다. <ic>[위키] 개발 표준 '25.11</ic>
+
+3. 외부 연동 현황
+ · 외부 서비스 연동 현황 에 현재 연동 중인 서드파티 서비스 목록과 갱신 일정이 관리되고 있습니다. <ic>[위키] 인프라팀 '26.02</ic>`,
+    srcs:[
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'보안팀',date:"'26.01",title:'외부 API 연동 보안 정책 v2',prev:'OAuth 2.0 인증 필수, API 키 관리 기준, 데이터 전송 암호화 정책.',author:'보안팀 작성',ext:true,dest:'위키 페이지로 이동'},
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'개발 표준',date:"'25.11",title:'REST API 설계 가이드',prev:'엔드포인트 명명 규칙, 에러 코드 체계, 버저닝 정책, 인증 방식 안내.',author:'백엔드팀 작성',ext:true,dest:'위키 페이지로 이동'},
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'인프라팀',date:"'26.02",title:'외부 서비스 연동 현황',prev:'현재 연동 중인 서드파티 서비스 목록 및 계약 갱신 일정.',author:'인프라팀 작성',ext:true,dest:'위키 페이지로 이동'},
+    ], browse:{}
+  },
+  '캘린더 검색: 신주경 참석 일정':{
+    mode:'cal', masked:0,
+    cond:['캘린더','최신순'], kw:['신주경','참석','일정'],
+    stats:{total:7, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:0, cal:7, email:0},
+    sum:`신주경 참석자가 포함된 일정을 정리했습니다.
+
+1. 이번 주
+ · [런던] SaaS B/U 주간 회의 — 월~금 오전 11:00, 런던 사무실. <ic>캘린더 '26.03.31 11:00</ic>
+ · 플로우 AI 모바일 회의 — 수요일 오후 2:00, 서울 회의실 A. <ic>캘린더 '26.04.01 14:00</ic>
+
+2. 다음 주
+ · [샌프란] Enter 회의 — 금요일 오전 11:30. <ic>캘린더 '26.04.10 11:30</ic>`,
+    srcs:[
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'flow.team',date:"3/31 11:00",title:'[런던] SaaS B/U 주간 회의',prev:'매주 월요일 오전 11:00 | 참석: 신주경, 양용선 외 3명 | 장소: 런던 사무실',author:'양용선 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'flow.team',date:"4/1 14:00",title:'플로우 AI 모바일 회의',prev:'모바일 앱 출시 일정 및 기능 논의 | 참석: 신주경, 황준호, Daniel | 장소: 회의실 A',author:'Daniel 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'flow.team',date:"4/10 11:30",title:'[샌프란] Enter 회의',prev:'분기별 엔터프라이즈 전략 회의 | 참석: 신주경 외 8명',author:'유인호 주최',ext:true,dest:'캘린더로 이동'},
+    ],
+    browse:{
+      cal:[
+        {icon:'📅',ico_bg:'#d1fae5',title:'[런던] SaaS B/U 주간 회의',preview:'매주 월요일 오전 11:00',project:'flow.team',author:'양용선 주최',date:'3/31',type:'캘린더',
+          calTime:'11:00 – 12:00',calLocation:'런던 사무실',calType:'ct-meeting',calTypeLabel:'회의',
+          calAttendees:['신주경','양용선','이성재','박혜린','조기완']},
+        {icon:'📅',ico_bg:'#d1fae5',title:'플로우 AI 모바일 회의',preview:'모바일 앱 출시 일정 및 기능 논의',project:'flow.team',author:'Daniel 주최',date:'4/1',type:'캘린더',
+          calTime:'14:00 – 15:00',calLocation:'회의실 A (서울)',calType:'ct-meeting',calTypeLabel:'회의',
+          calAttendees:['신주경','황준호','Daniel','신동석']},
+        {icon:'📅',ico_bg:'#d1fae5',title:'[샌프란] 온보딩 (엘레강스)',preview:'신규 고객 온보딩 세션',project:'flow.team',author:'유인호 주최',date:'4/3',type:'캘린더',
+          calTime:'10:30 – 11:30',calLocation:'샌프란시스코 오피스',calType:'ct-meeting',calTypeLabel:'회의',
+          calAttendees:['신주경','유인호','이성재']},
+        {icon:'📅',ico_bg:'#d1fae5',title:'[샌프란] Enter 회의',preview:'분기별 엔터프라이즈 전략 회의',project:'flow.team',author:'유인호 주최',date:'4/10',type:'캘린더',
+          calTime:'11:30 – 13:00',calLocation:'샌프란시스코 오피스',calType:'ct-meeting',calTypeLabel:'회의',
+          calAttendees:['신주경','양용선','유인호','황준호','이성재','외 3명']},
+      ],
+    }
+  },
+  '캘린더 검색: 이번 주 오전 회의':{
+    mode:'cal', masked:0,
+    cond:['캘린더','최신순'], kw:['오전','회의','이번 주'],
+    stats:{total:12, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:0, cal:12, email:0},
+    sum:`이번 주 오전 시간대 회의 일정을 정리했습니다.
+
+1. 월요일 (3/31)
+ · [런던] SaaS B/U 주간 회의 — 11:00, 참석 5명. <ic>캘린더 '26.03.31 11:00</ic>
+
+2. 화요일 (4/1)
+ · [멕시코] ismsp컨설팅 인터뷰 — 10:00. <ic>캘린더 '26.04.01 10:00</ic>
+ · [서울] 온보딩 (엘레강스) — 10:00. <ic>캘린더 '26.04.01 10:00</ic>
+
+3. 수요일 (4/2)
+ · [도쿄] ismsp컨설팅 — 10:00. <ic>캘린더 '26.04.02 10:00</ic>`,
+    srcs:[
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'flow.team',date:"3/31 11:00",title:'[런던] SaaS B/U 주간 회의',prev:'매주 월요일 오전 11:00 | 참석 5명 | 런던 사무실',author:'양용선 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'flow.team',date:"4/1 10:00",title:'[멕시코] ismsp컨설팅 인터뷰',prev:'고객사 컨설팅 인터뷰 | 참석 4명 | 멕시코시티 오피스',author:'이성재 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'flow.team',date:"4/1 10:00",title:'[서울] 표준개발팀 온보딩',prev:'신규 고객 온보딩 | 참석 3명 | 서울 본사',author:'신주경 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'flow.team',date:"4/2 10:00",title:'[도쿄] ismsp컨설팅',prev:'ismsp 도쿄 컨설팅 미팅 | 참석 4명 | 도쿄 오피스',author:'황준호 주최',ext:true,dest:'캘린더로 이동'},
+    ],
+    browse:{
+      cal:[
+        {icon:'📅',ico_bg:'#d1fae5',title:'[런던] SaaS B/U 주간 회의',preview:'매주 월요일 오전 11:00',project:'flow.team',author:'양용선 주최',date:'3/31 (월)',type:'캘린더',
+          calTime:'11:00 – 12:00',calLocation:'런던 사무실',calType:'ct-meeting',calTypeLabel:'회의',
+          calAttendees:['신주경','양용선','조기완','이성재','박혜린']},
+        {icon:'📅',ico_bg:'#d1fae5',title:'[멕시코] ismsp컨설팅 인터뷰',preview:'고객사 컨설팅 인터뷰',project:'flow.team',author:'이성재 주최',date:'4/1 (화)',type:'캘린더',
+          calTime:'10:00 – 11:30',calLocation:'멕시코시티 오피스',calType:'ct-meeting',calTypeLabel:'회의',
+          calAttendees:['이성재','황준호','유인호','김승규']},
+        {icon:'📅',ico_bg:'#d1fae5',title:'[서울] 표준개발팀 온보딩 (엘레강스)',preview:'신규 고객 온보딩 세션',project:'flow.team',author:'신주경 주최',date:'4/1 (화)',type:'캘린더',
+          calTime:'10:00 – 11:00',calLocation:'서울 본사',calType:'ct-meeting',calTypeLabel:'회의',
+          calAttendees:['신주경','박혜린','이성재']},
+        {icon:'📅',ico_bg:'#d1fae5',title:'[도쿄] ismsp컨설팅',preview:'ismsp 도쿄 컨설팅 미팅',project:'flow.team',author:'황준호 주최',date:'4/2 (수)',type:'캘린더',
+          calTime:'10:00 – 11:00',calLocation:'도쿄 오피스',calType:'ct-meeting',calTypeLabel:'회의',
+          calAttendees:['황준호','조기완','이성재','김승규']},
+        {icon:'📅',ico_bg:'#d1fae5',title:'[서울] LH 착수 미팅',preview:'LH 프로젝트 착수 미팅',project:'flow.team',author:'양용선 주최',date:'4/3 (목)',type:'캘린더',
+          calTime:'10:00 – 11:30',calLocation:'서울 회의실 B',calType:'ct-meeting',calTypeLabel:'회의',
+          calAttendees:['양용선','신주경','박혜린','이무룡','외 2명']},
+      ],
+    }
+  },
+  '캘린더 검색: 다음 주 일정':{
+    mode:'cal', masked:0,
+    stats:{total:9, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:0, cal:9, email:0},
+    sum:`다음 주 주요 일정을 정리했습니다.
+
+1. 정기 회의
+ · Product Weekly — 기획팀 전원 참석, 회의실 A. 매주 월요일 정기 회의입니다. <ic>캘린더 '26.03.31 10:00</ic>
+
+2. 외부 미팅
+ · 삼성화재 디자인 리뷰 — 디자인팀, PM, 개발 리드 참석. 최종 디자인 시안 리뷰입니다. <ic>캘린더 '26.04.02 11:00</ic>
+
+3. 내부 행사
+ · AI 스프린트 데모 — flow AI 검색 기능 스프린트 데모. 개발팀 + PM + QA 참석. <ic>캘린더 '26.04.03 15:00</ic>`,
+    srcs:[
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'기획팀',date:"3/31 10:00",title:'Product Weekly',prev:'매주 월요일 | 참석: 기획팀 전원 | 장소: 회의실 A | 아젠다 미리 공유 요청',author:'Daniel 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'삼성화재 프로젝트',date:"4/2 11:00",title:'삼성화재 디자인 리뷰',prev:'삼성화재 프로젝트 최종 디자인 리뷰. 참석: 디자인팀, PM, 개발 리드. 시안 v4 공유 예정.',author:'이하나 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'AI팀',date:"4/3 15:00",title:'AI 스프린트 데모',prev:'flow AI 검색 기능 스프린트 데모. 개발팀 + PM + QA 참석.',author:'김민준 주최',ext:true,dest:'캘린더로 이동'},
+    ], browse:{}
+  },
+  '캘린더 검색: 이번 달 전사 일정':{
+    mode:'cal', masked:0,
+    cond:['캘린더','최신순'], kw:['전사','타운홀','전체 회의'],
+    stats:{total:5, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:0, cal:5, email:0},
+    sum:`이번 달 전사 주요 일정을 정리했습니다.
+
+1. 전사 행사
+ · 4월 전사 타운홀 — 2026년 1분기 결산 및 2분기 방향 공유. 전사 필참. <ic>캘린더 '26.04.04 14:00</ic>
+
+2. 전략 점검
+ · 상반기 OKR 중간 점검 — 팀별 OKR 달성 현황 공유 및 하반기 방향 조정. <ic>캘린더 '26.04.15 10:00</ic>
+
+3. 교육
+ · AI 활용 역량 교육 — 전사 대상 flow AI 활용법 교육. 온라인/오프라인 병행. <ic>캘린더 '26.04.22 14:00</ic>`,
+    srcs:[
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'전사',date:"4/4 14:00",title:'4월 전사 타운홀',prev:'2026년 1분기 결산 및 2분기 방향 공유. 전사 필참.',author:'대표이사 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'전사',date:"4/15 10:00",title:'상반기 OKR 중간 점검',prev:'팀별 OKR 달성 현황 공유 및 하반기 방향 조정.',author:'전략팀 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'전사',date:"4/22 14:00",title:'AI 활용 역량 교육',prev:'전사 대상 flow AI 활용법 교육. 온라인/오프라인 병행 진행.',author:'HR팀 주최',ext:true,dest:'캘린더로 이동'},
+    ], browse:{}
+  },
+  '캘린더 검색: 김지훈 팀장 일정':{
+    mode:'cal', masked:0,
+    cond:['캘린더','최신순'], kw:['김지훈','팀장','미팅','일정'],
+    stats:{total:4, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:0, cal:4, email:0},
+    sum:`김지훈 팀장 관련 일정을 찾았습니다.
+
+1. 1:1 미팅
+ · 1:1 미팅 — 주간 업무 공유 및 이슈 논의. <ic>캘린더 '26.04.01 15:00</ic>
+
+2. 외부 파트너 미팅
+ · 삼성화재 디자인 리뷰 — 디자인팀 리드로 참석 예정. <ic>캘린더 '26.04.02 11:00</ic>
+
+3. 팀 회의
+ · AI팀 스프린트 회고 — 지난 2주 스프린트 회고 및 다음 스프린트 계획. <ic>캘린더 '26.04.07 14:00</ic>`,
+    srcs:[
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'AI팀',date:"4/1 15:00",title:'1:1 미팅 — 김지훈 팀장',prev:'주간 업무 공유 및 이슈 논의.',author:'김지훈 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'삼성화재 프로젝트',date:"4/2 11:00",title:'삼성화재 디자인 리뷰',prev:'최종 디자인 시안 리뷰. 참석: 디자인팀, PM, 개발 리드.',author:'이하나 주최',ext:true,dest:'캘린더로 이동'},
+      {icon:'📅',cls:'sb-cal',lbl:'캘린더',proj:'AI팀',date:"4/7 14:00",title:'AI팀 스프린트 회고',prev:'지난 2주 스프린트 회고 및 다음 스프린트 계획 논의.',author:'김지훈 주최',ext:true,dest:'캘린더로 이동'},
+    ], browse:{}
+  },
+  '이메일 검색: 계약 관련 메일':{
+    mode:'email', masked:2,
+    cond:['이메일','최신순'], kw:['계약','계약서','서명'],
+    stats:{total:12, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:0, cal:0, email:12},
+    sum:`계약 관련 수신·발신 이메일을 정리했습니다. (2개 항목 보안 마스킹 적용됨)
+
+1. 서명 요청
+ · 현대자동차 협력사 계약서 서명 요청 — 계약서 최종본 첨부, 이번 주 금요일까지 서명 요청. <ic>[이메일] 현대자동차 법무 '26.01.12</ic>
+
+2. 체결 완료
+ · 삼성화재 NDA 체결 완료 확인 — 쌍방 서명 완료 후 사본 전달. <ic>[이메일] 삼성화재 담당자 '26.02.05</ic>
+
+3. 법무 검토 의견
+ · 계약서 검토 의견 공유 — 3조 2항 수정 필요, 나머지 이상 없음. <ic>[이메일] 법무팀 '26.01.20</ic>`,
+    srcs:[
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'현대자동차 담당자',date:"'26.01.12",title:'[현대자동차] 협력사 계약서 서명 요청드립니다',prev:'협력사 계약서 최종본을 첨부드립니다. 이번 주 금요일까지 서명 후 회신 부탁드립니다.',author:'현대자동차 법무팀',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'삼성화재 담당자',date:"'26.02.05",title:'[삼성화재] NDA 체결 완료 확인',prev:'쌍방 서명이 완료된 NDA 사본을 첨부드립니다. 보관 부탁드립니다.',author:'삼성화재 계약팀',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'법무팀',date:"'26.01.20",title:'Re: 계약서 검토 의견 공유',prev:'첨부 계약서에 대한 법무 검토 의견입니다. 3조 2항 수정 필요, 나머지는 이상 없습니다.',author:'법무팀 이지현',ext:true,dest:'이메일 원문으로 이동'},
+    ], browse:{}
+  },
+  '이메일 검색: 신규 입사 안내':{
+    mode:'email', masked:0,
+    cond:['이메일','최신순'], kw:['신규 입사','웰컴','온보딩'],
+    stats:{total:6, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:0, cal:0, email:6},
+    sum:`신규 입사 관련 이메일을 정리했습니다.
+
+1. 웰컴 메일
+ · 입사 환영 메일 — 입사 첫날 준비사항과 온보딩 일정이 안내되어 있습니다. <ic>[이메일] HR팀 '26.03.10</ic>
+
+2. 시스템 계정 발급
+ · IT 계정 발급 안내 — flow, Google Workspace, Figma 계정이 발급되었으며 초기 비밀번호 변경 안내. <ic>[이메일] IT운영팀 '26.03.10</ic>
+
+3. 교육 일정 안내
+ · 신규 입사자 오리엔테이션 일정 — 3월 14일(월) 오전 10시, 대회의실. <ic>[이메일] HR팀 '26.03.11</ic>`,
+    srcs:[
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'HR팀',date:"'26.03.10",title:'[마드라스체크] 입사를 환영합니다 🎉',prev:'안녕하세요. 마드라스체크 HR팀입니다. 입사 첫날 준비사항과 온보딩 일정을 안내드립니다.',author:'HR팀 발송',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'IT운영팀',date:"'26.03.10",title:'[IT] 계정 발급 안내',prev:'flow, Google Workspace, Figma 계정이 발급되었습니다. 초기 비밀번호 변경을 완료해 주세요.',author:'IT운영팀 발송',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'HR팀',date:"'26.03.11",title:'[오리엔테이션] 신규 입사자 교육 일정 안내',prev:'3월 14일(월) 오전 10시 대회의실에서 진행됩니다. 지각 없이 참석 부탁드립니다.',author:'HR팀 발송',ext:true,dest:'이메일 원문으로 이동'},
+    ], browse:{}
+  },
+  '이메일 검색: 미팅 리마인더':{
+    mode:'email', masked:0,
+    cond:['이메일','최신순'], kw:['미팅','리마인더','회의','일정 확인'],
+    stats:{total:8, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:0, cal:0, email:8},
+    sum:`미팅 리마인더 이메일을 정리했습니다.
+
+1. 주간 회의 리마인더
+ · Product Weekly 리마인더 — 내일 오전 10시, 회의실 A 확인 요청. <ic>[이메일] 기획팀 '26.03.30</ic>
+
+2. 외부 미팅 확인
+ · 삼성화재 미팅 확인 요청 — 4월 2일 오전 11시 미팅 참석 여부 최종 확인. <ic>[이메일] 삼성화재 담당자 '26.04.01</ic>
+
+3. 정기 1:1 리마인더
+ · 1:1 미팅 리마인더 — 오늘 오후 3시 1:1 미팅이 예정되어 있습니다. <ic>[이메일] 캘린더 자동발송 '26.03.31</ic>`,
+    srcs:[
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'기획팀',date:"'26.03.30",title:'[리마인더] Product Weekly — 3/31 10:00',prev:'내일 오전 10시 Product Weekly가 예정되어 있습니다. 회의실 A 확인 부탁드립니다.',author:'Daniel 발송',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'삼성화재 담당자',date:"'26.04.01",title:'[확인 요청] 4/2 미팅 참석 여부',prev:'4월 2일(목) 오전 11시 미팅 참석 여부를 최종 확인드립니다.',author:'삼성화재 김담당 발송',ext:true,dest:'이메일 원문으로 이동'},
+      {icon:'✉️',cls:'sb-email',lbl:'이메일',proj:'캘린더 자동발송',date:"'26.03.31",title:'[리마인더] 오늘 오후 3시 1:1 미팅',prev:'오늘 오후 3시에 1:1 미팅이 예정되어 있습니다.',author:'캘린더 자동발송',ext:true,dest:'이메일 원문으로 이동'},
+    ], browse:{}
+  },
+  '업무 검색: 진행 중 이번 주 마감':{
+    mode:'ai', masked:0,
+    cond:['게시물 탭','최신순'], kw:['진행','이번 주','마감'],
+    stats:{total:8, proj:0, post:8, comment:0, chat:0, file:0},
+    sum:`진행 중이면서 이번 주 마감인 업무를 정리했습니다.
+
+1. 긴급 처리 필요
+ · [신규] 온트너 QA 서버 구축 — 진행 90%, 마감일 이번 주 금요일. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.27</ic>
+ · [개선] 외부 링크 이동을 외부 브라우저 오픈 처리 — 테스트 단계, 긴급 우선순위. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.25</ic>
+ · 계약 갱신 협의 — 이번 주 마감, 박제원 담당. <ic>[업무] 삼성화재 프로젝트 '26.03.20</ic>
+
+2. 정상 진행 중
+ · 모바일 앱 심사 — 진행 중, 서동석·우성호 담당. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.17</ic>
+ · [신규] 앱 내에서 회원가입 기능 추가 — 진행 중. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.25</ic>
+ · 온트너 QA 전용 서버 구축 안내 — 테스트 진행 중. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.25</ic>
+ · [개선] 설정 및 사이드바 개선 — 진행 중, 신주경 담당. <ic>[업무] flow AI 신규/개선 건 '26.01.26</ic>
+
+3. 대기 중
+ · [개선] 비밀번호 만료 관련 정책건 — 박제원 담당, 이번 주 마감. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.25</ic>`,
+    srcs:[
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.27",title:'[신규] 온트너 QA 서버 구축',prev:'운영 환경과 거의 비슷한 온트너용 QA 환경을 개발 내에 신규 구축.',author:'우성호 작성',status:'진행',statusCls:'ts-progress',assignee:'우성호',deadline:'2026-03-31',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'[개선] 외부 링크 이동을 외부 브라우저 오픈 처리',prev:'온스타일 등 외부 페이지로 이동했다가 앱에서 다시 온트너로 돌아올 수 있도록.',author:'우성호 작성',status:'테스트',statusCls:'ts-test',assignee:'우성호',deadline:'2026-03-28',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'삼성화재 프로젝트',date:"'26.03.20",title:'계약 갱신 협의',prev:'이번 주 금요일까지 계약서 검토 및 서명 완료 필요.',author:'박제원 작성',status:'진행',statusCls:'ts-progress',assignee:'박제원',deadline:'2026-03-28',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.17",title:'모바일 앱 심사',prev:'앱 심사 제출 전 최종 점검 항목 확인 및 심사 대응.',author:'서동석 작성',status:'진행',statusCls:'ts-progress',assignee:'서동석 +1',deadline:'2026-03-31',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'[신규] 앱 내에서 회원가입 기능 추가',prev:'온트너 앱 내 자체 회원가입 플로우 신규 구현.',author:'서동석 작성',status:'진행',statusCls:'ts-progress',assignee:'서동석 +1',deadline:'2026-03-30',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'온트너 QA 전용 서버 구축 안내',prev:'QA 서버 구축 현황 및 일정 안내.',author:'우성호 작성',status:'테스트',statusCls:'ts-test',assignee:'우성호',deadline:'2026-03-31',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'flow AI 신규/개선 건',date:"'26.01.26",title:'[개선] 설정 및 사이드바 개선',prev:'사이드바 UX 구조 개선 및 프로필 메뉴 업데이트.',author:'신주경 작성',status:'진행',statusCls:'ts-progress',assignee:'신주경',deadline:'2026-03-31',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'[개선] 비밀번호 만료 관련 정책건',prev:'비밀번호 만료 시 앱 내 처리 로직 및 안내 메시지 개선.',author:'우성호 작성',status:'대기',statusCls:'ts-wait',assignee:'박제원',deadline:'2026-03-29',ext:false,dest:'업무로 이동'},
+    ],
+    browse:{
+      post:[
+        {icon:'📋',ico_bg:'#eff6ff',title:'[신규] 온트너 QA 서버 구축',preview:'운영 환경과 거의 비슷한 온트너용 QA 환경을 구축합니다.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-27',type:'업무',status:'진행',statusCls:'ts-progress',progress:90,assignee:'우성호',deadline:'2026-03-31',priority:'높음',priorityCls:'tp-high'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[개선] 외부 링크 이동을 외부 브라우저 오픈 처리',preview:'외부 페이지 이동 후 앱 복귀 기능 개선.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25',type:'업무',status:'테스트',statusCls:'ts-test',progress:0,assignee:'우성호',deadline:'2026-03-28',priority:'긴급',priorityCls:'tp-urgent'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'모바일 앱 심사',preview:'앱 심사 제출 전 최종 점검 항목 확인 및 심사 대응.',project:'온트너 앱 개발 프로젝트',author:'서동석',date:'2026-03-17',type:'업무',status:'진행',statusCls:'ts-progress',progress:0,assignee:'서동석 +1',deadline:'2026-03-31',priority:'보통',priorityCls:'tp-normal'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[개선] 비밀번호 만료 관련 정책건',preview:'비밀번호 만료 시 앱 내 처리 로직 및 안내 메시지 개선.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25',type:'업무',status:'대기',statusCls:'ts-wait',progress:0,assignee:'박제원',deadline:'2026-03-29',priority:'보통',priorityCls:'tp-normal'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[신규] 앱 내에서 회원가입 기능 추가',preview:'온트너 앱 내 자체 회원가입 플로우 신규 구현.',project:'온트너 앱 개발 프로젝트',author:'서동석',date:'2026-03-25',type:'업무',status:'진행',statusCls:'ts-progress',progress:40,assignee:'서동석 +1',deadline:'2026-03-30',priority:'보통',priorityCls:'tp-normal'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'온트너 QA 전용 서버 구축 안내',preview:'운영 환경과 거의 비슷한 QA 환경 구축 및 배포 안내.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25',type:'업무',status:'테스트',statusCls:'ts-test',progress:60,assignee:'우성호',deadline:'2026-03-31',priority:'높음',priorityCls:'tp-high'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'계약 갱신 협의',preview:'이번 주 금요일까지 계약서 검토 및 서명 완료 필요.',project:'삼성화재 프로젝트',author:'박제원',date:'2026-03-20',type:'업무',status:'진행',statusCls:'ts-progress',progress:30,assignee:'박제원',deadline:'2026-03-28',priority:'긴급',priorityCls:'tp-urgent'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[개선] 설정 및 사이드바 개선',preview:'사이드바 UX 구조 개선 및 프로필 메뉴 업데이트.',project:'flow AI 신규/개선 건',author:'신주경',date:'2026-01-26',type:'업무',status:'진행',statusCls:'ts-progress',progress:20,assignee:'신주경',deadline:'2026-03-31',priority:'보통',priorityCls:'tp-normal'},
+      ],
+    }
+  },
+  '업무 검색: 우성호 담당 업무':{
+    mode:'ai', masked:0,
+    cond:['게시물 탭','최신순'], kw:['우성호','담당'],
+    stats:{total:12, proj:0, post:12, comment:0, chat:0, file:0},
+    sum:`우성호 담당 업무를 정리했습니다.
+
+1. 현재 진행 중
+ · 온트너 QA 서버 구축 — 90% 진행. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.27</ic>
+ · 외부 링크 이동을 외부 브라우저 오픈 처리 — 테스트 단계. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.25</ic>
+ · 플로우 모바일 앱 개발 — 완료. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.18</ic>
+ · 온트너 QA 전용 서버 구축 안내 — 테스트 진행 중. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.25</ic>
+ · 앱 내 회원가입 기능 추가 — 진행 중. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.25</ic>
+ · 비밀번호 만료 관련 정책건 — 대기 중. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.25</ic>
+ · 모바일 앱 심사 — 진행 중. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.17</ic>
+
+2. 최근 완료
+ · 로그인 화면 UI/UX 확인 필요사항 — 완료. <ic>[업무] 온트너 앱 개발 프로젝트 '26.01.13</ic>
+ · 온트너 피그마 제공 — 완료. <ic>[업무] 온트너 앱 개발 프로젝트 '25.11.03</ic>
+ · 모바일 이미지 리소스 요청 — 완료. <ic>[업무] 온트너 앱 개발 프로젝트 '25.11.08</ic>
+ · 계약 갱신 — 완료. <ic>[업무] 온트너 앱 개발 프로젝트 '26.02.23</ic>
+ · 온트너x플로우 테스트 및 QA — 완료. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.17</ic>`,
+    srcs:[
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.27",title:'[신규] 온트너 QA 서버 구축',prev:'운영 환경과 거의 비슷한 QA 환경 신규 구축.',author:'우성호 작성',status:'진행',statusCls:'ts-progress',assignee:'우성호',deadline:'2026-03-31',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'[개선] 외부 링크 이동을 외부 브라우저 오픈 처리',prev:'외부 페이지 이동 후 앱 복귀 기능 개선.',author:'우성호 작성',status:'테스트',statusCls:'ts-test',assignee:'우성호',deadline:'2026-03-28',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.18",title:'[플로우] 모바일 앱 개발',prev:'플로우 모바일 앱 신규 개발 및 배포.',author:'우성호 작성',status:'완료',statusCls:'ts-done',assignee:'우성호 +1',deadline:'2025-12-26',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'온트너 QA 전용 서버 구축 안내',prev:'QA 서버 구축 현황 및 일정 안내.',author:'우성호 작성',status:'테스트',statusCls:'ts-test',assignee:'우성호',deadline:'2026-03-31',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'[신규] 앱 내에서 회원가입 기능 추가',prev:'온트너 앱 내 자체 회원가입 플로우 신규 구현.',author:'우성호 작성',status:'진행',statusCls:'ts-progress',assignee:'우성호',deadline:'2026-03-30',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'[개선] 비밀번호 만료 관련 정책건',prev:'비밀번호 만료 시 팝업 처리 로직 개선.',author:'우성호 작성',status:'대기',statusCls:'ts-wait',assignee:'우성호',deadline:'2026-03-29',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.17",title:'모바일 앱 심사',prev:'앱 심사 제출 전 최종 점검 항목 확인 및 심사 대응.',author:'우성호 작성',status:'진행',statusCls:'ts-progress',assignee:'우성호',deadline:'2026-03-31',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.01.13",title:'[온트너x플로우] 로그인 화면 UI/UX 확인 필요사항',prev:'로그인 UI 검토 및 플로우 측 대응 사항 정리.',author:'우성호 작성',status:'완료',statusCls:'ts-done',assignee:'우성호 +2',deadline:'2026-02-25',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'25.11.03",title:'[온트너] 온트너 피그마 제공',prev:'API 개발, 문서 작성 및 온트너 화면 흐름 이해도 제고.',author:'우성호 작성',status:'완료',statusCls:'ts-done',assignee:'우성호',deadline:'2025-11-10',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'25.11.08",title:'[온트너] 모바일 이미지 리소스 요청',prev:'온트너 모바일 앱에서 사용할 리소스 및 정책 요청.',author:'우성호 작성',status:'완료',statusCls:'ts-done',assignee:'우성호',deadline:'2025-11-15',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.02.23",title:'[계약] 갱신',prev:'계약 갱신 관련 협의 및 내용 검토.',author:'우성호 작성',status:'완료',statusCls:'ts-done',assignee:'우성호 +3',deadline:'2026-02-25',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.17",title:'[온트너x플로우] 테스트 및 QA',prev:'온트너 앱 통합 테스트 및 QA 진행.',author:'우성호 작성',status:'완료',statusCls:'ts-done',assignee:'우성호',deadline:'2026-03-17',ext:false,dest:'업무로 이동'},
+    ],
+    browse:{
+      post:[
+        {icon:'📋',ico_bg:'#eff6ff',title:'[신규] 온트너 QA 서버 구축',preview:'운영 환경과 거의 비슷한 온트너용 QA 환경을 구축합니다.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-27',type:'업무',status:'진행',statusCls:'ts-progress',progress:90,assignee:'우성호',deadline:'2026-03-31',priority:'높음',priorityCls:'tp-high'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[플로우] 모바일 앱 개발',preview:'플로우 모바일 앱 신규 개발 및 배포.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-18',type:'업무',status:'완료',statusCls:'ts-done',progress:100,assignee:'우성호 +1',deadline:'2025-12-26',priority:'보통',priorityCls:'tp-normal'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[개선] 외부 링크 이동을 외부 브라우저 오픈 처리',preview:'외부 페이지 이동 후 앱 복귀 기능 개선.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25',type:'업무',status:'테스트',statusCls:'ts-test',progress:0,assignee:'우성호',deadline:'2026-03-28',priority:'긴급',priorityCls:'tp-urgent'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'온트너 QA 전용 서버 구축 안내',preview:'QA 서버 구축 현황 및 일정 안내.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25',type:'업무',status:'테스트',statusCls:'ts-test',progress:60,assignee:'우성호',deadline:'2026-03-31',priority:'높음',priorityCls:'tp-high'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[온트너] 온트너 피그마 제공',preview:'API 개발, 문서 작성 및 온트너 화면 흐름 이해도 제고.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2025-11-03',type:'업무',status:'완료',statusCls:'ts-done',progress:100,assignee:'우성호',deadline:'2025-11-10',priority:'보통',priorityCls:'tp-normal'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[온트너x플로우] 로그인 화면 UI/UX 확인 필요사항',preview:'로그인 UI 검토 및 플로우 측 대응 사항 정리.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-01-13',type:'업무',status:'완료',statusCls:'ts-done',progress:100,assignee:'우성호 +2',deadline:'2026-02-25',priority:'높음',priorityCls:'tp-high'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[개선] 비밀번호 만료 관련 정책건',preview:'비밀번호 만료 시 팝업 처리 로직 개선.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25',type:'업무',status:'대기',statusCls:'ts-wait',progress:0,assignee:'우성호',deadline:'2026-03-29',priority:'보통',priorityCls:'tp-normal'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[신규] 앱 내에서 회원가입 기능 추가',preview:'온트너 앱 내 자체 회원가입 플로우 신규 구현.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25',type:'업무',status:'진행',statusCls:'ts-progress',progress:40,assignee:'우성호',deadline:'2026-03-30',priority:'보통',priorityCls:'tp-normal'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[온트너] 모바일 이미지 리소스 요청',preview:'온트너 모바일 앱에서 사용할 리소스 및 정책 요청.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2025-11-08',type:'업무',status:'완료',statusCls:'ts-done',progress:100,assignee:'우성호',deadline:'2025-11-15',priority:'보통',priorityCls:'tp-normal'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'모바일 앱 심사',preview:'앱 심사 제출 전 최종 점검 항목 확인 및 심사 대응.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-17',type:'업무',status:'진행',statusCls:'ts-progress',progress:0,assignee:'우성호',deadline:'2026-03-31',priority:'보통',priorityCls:'tp-normal'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[계약] 갱신',preview:'계약 갱신 관련 협의 및 내용 검토.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-02-23',type:'업무',status:'완료',statusCls:'ts-done',progress:100,assignee:'우성호 +3',deadline:'2026-02-25',priority:'높음',priorityCls:'tp-high'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[온트너x플로우] 테스트 및 QA',preview:'온트너 앱 통합 테스트 및 QA 진행.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-17',type:'업무',status:'완료',statusCls:'ts-done',progress:100,assignee:'우성호',deadline:'2026-03-17',priority:'보통',priorityCls:'tp-normal'},
+      ],
+    }
+  },
+  '업무 검색: 긴급 우선순위':{
+    mode:'ai', masked:0,
+    cond:['게시물 탭','관련도순'], kw:['긴급','우선순위'],
+    stats:{total:4, proj:0, post:4, comment:0, chat:0, file:0},
+    sum:`긴급 우선순위 업무를 정리했습니다.
+
+ · 외부 링크 이동을 외부 브라우저 오픈 처리 — 테스트 단계. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.25</ic>
+ · 계약 갱신 협의 — 이번 주 마감, 박제원 담당. <ic>[업무] 삼성화재 프로젝트 '26.03.20</ic>
+ · [신규] 온트너 QA 서버 구축 — 진행 중, 긴급 우선순위. <ic>[업무] 온트너 앱 개발 프로젝트 '26.03.27</ic>
+ · [온트너x플로우] 로그인 화면 UI/UX 확인 필요사항 — 완료. <ic>[업무] 온트너 앱 개발 프로젝트 '26.01.13</ic>`,
+    srcs:[
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.25",title:'[개선] 외부 링크 이동을 외부 브라우저 오픈 처리',prev:'긴급 우선순위 배정. 이번 주 처리 필요.',author:'우성호 작성',status:'테스트',statusCls:'ts-test',assignee:'우성호',deadline:'2026-03-28',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'삼성화재 프로젝트',date:"'26.03.20",title:'계약 갱신 협의',prev:'이번 주 금요일까지 계약서 검토 및 서명 완료 필요.',author:'박제원 작성',status:'진행',statusCls:'ts-progress',assignee:'박제원',deadline:'2026-03-28',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.03.27",title:'[신규] 온트너 QA 서버 구축',prev:'운영 환경과 거의 비슷한 QA 환경을 신규 구축합니다.',author:'우성호 작성',status:'진행',statusCls:'ts-progress',assignee:'우성호',deadline:'2026-03-31',ext:false,dest:'업무로 이동'},
+      {icon:'📋',cls:'sb-task',lbl:'업무',proj:'온트너 앱 개발 프로젝트',date:"'26.01.13",title:'[온트너x플로우] 로그인 화면 UI/UX 확인 필요사항',prev:'로그인 UI 긴급 검토 및 플로우 측 대응 사항 정리.',author:'조기완 작성',status:'완료',statusCls:'ts-done',assignee:'조기완 +3',deadline:'2026-02-25',ext:false,dest:'업무로 이동'},
+    ],
+    browse:{
+      post:[
+        {icon:'📋',ico_bg:'#eff6ff',title:'[개선] 외부 링크 이동을 외부 브라우저 오픈 처리',preview:'긴급 우선순위 배정. 이번 주 처리 필요.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25',type:'업무',status:'테스트',statusCls:'ts-test',progress:0,assignee:'우성호',deadline:'2026-03-28',priority:'긴급',priorityCls:'tp-urgent'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'계약 갱신 협의',preview:'이번 주 금요일까지 계약서 검토 및 서명 완료 필요.',project:'삼성화재 프로젝트',author:'박제원',date:'2026-03-20',type:'업무',status:'진행',statusCls:'ts-progress',progress:30,assignee:'박제원',deadline:'2026-03-28',priority:'긴급',priorityCls:'tp-urgent'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[신규] 온트너 QA 서버 구축',preview:'운영 환경과 거의 비슷한 QA 환경을 신규 구축합니다.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-27',type:'업무',status:'진행',statusCls:'ts-progress',progress:90,assignee:'우성호',deadline:'2026-03-31',priority:'긴급',priorityCls:'tp-urgent'},
+        {icon:'📋',ico_bg:'#eff6ff',title:'[온트너x플로우] 로그인 화면 UI/UX 확인 필요사항',preview:'로그인 UI 긴급 검토 및 플로우 측 대응 사항 정리.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-01-13',type:'업무',status:'완료',statusCls:'ts-done',progress:100,assignee:'조기완 +3',deadline:'2026-02-25',priority:'긴급',priorityCls:'tp-urgent'},
+      ],
+    }
+  },
+  '히스토리 검색: 온트너 상태 변경':{
+    mode:'ai', masked:0,
+    cond:['통합 탭','최신순'], kw:['온트너','상태 변경','히스토리'],
+    stats:{total:18, proj:0, post:18, comment:0, chat:0, file:0},
+    sum:`온트너 관련 업무 상태 변경 히스토리를 정리했습니다.
+
+1. 최근 변경
+ · 온트너 QA 전용 서버 구축 안내 — 피드백 → 완료. <ic>[히스토리] 온트너 앱 개발 프로젝트 '26.03.30</ic>
+ · [신규] 온트너 QA 서버 구축 — 대기 → 진행. <ic>[히스토리] 온트너 앱 개발 프로젝트 '26.03.27</ic>
+ · [플로우] 모바일 앱 개발 — 진행 → 완료. <ic>[히스토리] 온트너 앱 개발 프로젝트 '26.03.18</ic>`,
+    srcs:[
+      {icon:'🕐',cls:'sb-task',lbl:'히스토리',proj:'온트너 앱 개발 프로젝트',date:"'26.03.30",title:'온트너 QA 전용 서버 구축 안내',prev:'피드백 → 완료 | 기호현 변경',author:'기호현',ext:false,dest:'업무로 이동'},
+      {icon:'🕐',cls:'sb-task',lbl:'히스토리',proj:'온트너 앱 개발 프로젝트',date:"'26.03.27",title:'[신규] 온트너 QA 서버 구축',prev:'대기 → 진행 | 우성호 변경',author:'우성호',ext:false,dest:'업무로 이동'},
+      {icon:'🕐',cls:'sb-task',lbl:'히스토리',proj:'온트너 앱 개발 프로젝트',date:"'26.03.18",title:'[플로우] 모바일 앱 개발',prev:'진행 → 완료 | 우성호 변경',author:'우성호',ext:false,dest:'업무로 이동'},
+    ],
+    browse:{
+      post:[
+        {icon:'🕐',ico_bg:'#f5f3ff',title:'온트너 QA 전용 서버 구축 안내',preview:'',project:'온트너 앱 개발 프로젝트',author:'기호현',date:'2026-03-30',type:'히스토리',historyFrom:'피드백',historyTo:'완료',historyWho:'기호현',historyAt:'2026-03-30 16:42'},
+        {icon:'🕐',ico_bg:'#f5f3ff',title:'[신규] 온트너 QA 서버 구축',preview:'',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-27',type:'히스토리',historyFrom:'대기',historyTo:'진행',historyWho:'우성호',historyAt:'2026-03-27 12:32'},
+        {icon:'🕐',ico_bg:'#f5f3ff',title:'[플로우] 모바일 앱 개발',preview:'',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-18',type:'히스토리',historyFrom:'진행',historyTo:'완료',historyWho:'우성호',historyAt:'2026-03-18 14:16'},
+        {icon:'🕐',ico_bg:'#f5f3ff',title:'[개선] 외부 링크 이동을 외부 브라우저 오픈 처리',preview:'',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-25',type:'히스토리',historyFrom:'대기',historyTo:'테스트',historyWho:'우성호',historyAt:'2026-03-25 14:57'},
+      ],
+    }
+  },
+  '투표 결과: 출시 일정 투표':{
+    mode:'ai', masked:0,
+    cond:['게시물 탭','최신순'], kw:['출시 일정','투표','결과'],
+    stats:{total:3, proj:0, post:3, comment:0, chat:0, file:0},
+    sum:`출시 일정 관련 투표 결과를 정리했습니다.
+
+ · 온트너 앱 출시 일정 투표 — 3월 초중순 78%, 3월 말 16%, 4월 이후 6% 득표. <ic>[투표] 온트너 앱 개발 프로젝트 '26.02</ic>
+ · 총 참여자 32명, 투표 마감 완료.`,
+    srcs:[
+      {icon:'🗳',cls:'sb-task',lbl:'투표',proj:'온트너 앱 개발 프로젝트',date:"'26.02",title:'온트너 앱 출시 일정 투표',prev:'3월 초중순 78% · 3월 말 16% · 4월 이후 6% | 참여 32명',author:'양용선 작성',ext:false,dest:'게시물로 이동'},
+    ],
+    browse:{
+      post:[
+        {icon:'🗳',ico_bg:'#faf5ff',title:'온트너 앱 출시 일정 투표',preview:'온트너 앱 출시 목표 일정을 결정하기 위한 팀 투표입니다.',project:'온트너 앱 개발 프로젝트',author:'양용선',date:'2026-02',type:'투표',voteItems:[['3월 초중순',78],['3월 말',16],['4월 이후',6]],voteTotal:32},
+        {icon:'🗳',ico_bg:'#faf5ff',title:'QA 방식 결정 투표',preview:'온트너 QA를 내부 진행할지 외부 업체를 쓸지 결정합니다.',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-01',type:'투표',voteItems:[['내부 진행',65],['외부 업체',25],['미정',10]],voteTotal:20},
+      ],
+    }
+  },
+  '투표 결과: 코드 리뷰 방식':{
+    mode:'ai', masked:0,
+    cond:['게시물 탭','최신순'], kw:['코드 리뷰','투표'],
+    stats:{total:2, proj:0, post:2, comment:0, chat:0, file:0},
+    sum:`코드 리뷰 방식 투표 결과를 정리했습니다.
+
+ · PR 리뷰 도구 선택 투표 — GitHub PR 62%, GitLab MR 28%, 내부 도구 10%. <ic>[투표] 개발팀 채널 '26.03</ic>`,
+    srcs:[
+      {icon:'🗳',cls:'sb-task',lbl:'투표',proj:'개발팀',date:"'26.03",title:'PR 리뷰 도구 선택 투표',prev:'GitHub PR 62% · GitLab MR 28% · 내부 도구 10% | 참여 21명',author:'신동석 작성',ext:false,dest:'게시물로 이동'},
+    ],
+    browse:{
+      post:[
+        {icon:'🗳',ico_bg:'#faf5ff',title:'PR 리뷰 도구 선택 투표',preview:'코드 리뷰에 사용할 도구를 팀원 투표로 결정합니다.',project:'개발팀',author:'신동석',date:'2026-03',type:'투표',voteItems:[['GitHub PR',62],['GitLab MR',28],['내부 도구',10]],voteTotal:21},
+      ],
+    }
+  },
+  '파일 내부 검색: APK 빌드':{
+    mode:'ai', masked:0,
+    cond:['파일 탭','관련도순'], kw:['APK','빌드','온트너'],
+    stats:{total:4, proj:0, post:0, comment:0, chat:0, file:4},
+    sum:`APK 빌드 파일 관련 내용을 정리했습니다.
+
+1. 댓글 첨부 파일
+ · ontner-release_1.0.0(7).apk — 61.8MB, 양용선 댓글에 첨부. <ic>[파일] 온트너 앱 개발 프로젝트 댓글 '26.03.06</ic>
+
+2. 파일 내부 텍스트 매칭
+ · 빌드 배포 가이드.pdf — 내부에 "APK 빌드 후 팀장 전달" 절차 포함. <ic>[파일] 온트너 앱 개발 프로젝트 '26.03.01</ic>`,
+    srcs:[
+      {icon:'📱',cls:'sb-file',lbl:'파일 (댓글)',proj:'온트너 앱 개발 프로젝트',date:"'26.03.06",title:'ontner-release_1.0.0(7).apk',prev:'61.8MB | 양용선 댓글 첨부 | "최신 빌드 확인 부탁드립니다! 박제원"',author:'양용선 첨부',ext:false,dest:'파일로 이동'},
+      {icon:'📄',cls:'sb-file',lbl:'파일',proj:'온트너 앱 개발 프로젝트',date:"'26.03.01",title:'빌드 배포 가이드.pdf',prev:'내일 APK 빌드해서 용선 팀장님 통해 전달드릴 예정입니다!',author:'우성호 업로드',ext:false,dest:'파일로 이동'},
+    ],
+    browse:{
+      file:[
+        {icon:'📱',ico_bg:'#fdf4ff',title:'ontner-release_1.0.0(7).apk',preview:'61.8MB — 최신 빌드 확인 부탁드립니다! 박제원',project:'온트너 앱 개발 프로젝트 (댓글)',author:'양용선',date:'2026-03-06',type:'파일',matchType:'content',snippet:'내일 APK 빌드해서 용선 팀장님 통해 전달드릴 예정입니다!'},
+        {icon:'📄',ico_bg:'#fdf4ff',title:'빌드 배포 가이드.pdf',preview:'APK 빌드 후 팀장 전달 절차 포함',project:'온트너 앱 개발 프로젝트',author:'우성호',date:'2026-03-01',type:'파일',matchType:'content',snippet:'...APK 빌드 완료 후 용선 팀장님 통해 파일 전달. 배포 전 QA 확인 필수...'},
+      ],
+    }
+  },
+  '드라이브 검색: flow AI 기획':{
+    mode:'ai', masked:0,
+    cond:['파일 탭','관련도순'], kw:['flow AI','기획','드라이브'],
+    stats:{total:5, proj:0, post:0, comment:0, chat:0, file:5},
+    sum:`구글 드라이브에서 flow AI 기획 관련 문서를 찾았습니다.
+
+1. 핵심 기획 문서
+ · flow_ai_final_plan — 2026년 1분기 기준 최신 기획서. <ic>[구글 드라이브] AI사업개발실 '26.03.28</ic>
+ · AI 가격표 — flow AI 요금제 및 구독 정책 초안. <ic>[구글 드라이브] AI사업개발실 '26.03.27</ic>
+
+2. 리소스
+ · AI TFT 리소스 차트 — 팀원 투입 일정 및 역할 분담표. <ic>[구글 드라이브] AI사업개발실 '26.03.25</ic>`,
+    srcs:[
+      {icon:'📗',cls:'sb-file',lbl:'구글 드라이브',proj:'AI사업개발실',date:"'26.03.28",title:'flow_ai_final_plan',prev:'2026년 1분기 기준 최신 flow AI 기획서. 기능 정의, 출시 일정, 가격 정책 포함.',author:'Daniel 작성',ext:true,dest:'구글 드라이브에서 열기'},
+      {icon:'📗',cls:'sb-file',lbl:'구글 드라이브',proj:'AI사업개발실',date:"'26.03.27",title:'AI 가격표',prev:'flow AI 요금제 및 구독 정책 초안. Basic / Pro / Enterprise 플랜.',author:'Daniel 작성',ext:true,dest:'구글 드라이브에서 열기'},
+      {icon:'📗',cls:'sb-file',lbl:'구글 드라이브',proj:'AI사업개발실',date:"'26.03.25",title:'AI TFT 리소스 차트',prev:'팀원 투입 일정 및 역할 분담표.',author:'Daniel 작성',ext:true,dest:'구글 드라이브에서 열기'},
+    ],
+    browse:{
+      file:[
+        {icon:'📗',ico_bg:'#d1fae5',title:'flow_ai_final_plan',preview:'2026년 1분기 기준 최신 flow AI 기획서.',project:'AI사업개발실 (구글 드라이브)',author:'Daniel',date:'2026-03-28',type:'파일',matchType:'drive',snippet:'flow AI 통합 검색 기능 기획 — 출시 목표: 2026년 6월 25일'},
+        {icon:'📗',ico_bg:'#d1fae5',title:'AI 가격표',preview:'flow AI 요금제 및 구독 정책 초안.',project:'AI사업개발실 (구글 드라이브)',author:'Daniel',date:'2026-03-27',type:'파일',matchType:'drive',snippet:'Basic / Pro / Enterprise 플랜 가격 정책'},
+        {icon:'📗',ico_bg:'#d1fae5',title:'AI TFT 리소스 차트',preview:'팀원 투입 일정 및 역할 분담표.',project:'AI사업개발실 (구글 드라이브)',author:'Daniel',date:'2026-03-25',type:'파일',matchType:'drive',snippet:'2026년 2Q 개발팀 투입 일정'},
+      ],
+    }
+  },
+  '파일 내부 검색: 계약서 조항':{
+    mode:'ai', masked:3,
+    cond:['파일 탭','관련도순'], kw:['계약서','조항','내부'],
+    stats:{total:5, proj:0, post:0, comment:0, chat:0, file:5},
+    sum:`계약서 파일 내부 텍스트에서 일치하는 내용을 찾았습니다. (3개 항목 보안 마스킹 적용됨)
+
+1. 내부 텍스트 매칭
+ · 현대_협력사계약_2026.pdf — 3조 협력 범위 항목에서 조항 키워드 8건 매칭. <ic>[파일] 현대자동차 프로젝트 '26.01.15</ic>
+ · 삼성화재_서비스계약_2026.docx — 5조 면책 조항 항목 포함. <ic>[파일] 삼성화재 프로젝트 '26.02.03</ic>`,
+    srcs:[
+      {icon:'📄',cls:'sb-file',lbl:'파일',proj:'현대자동차 프로젝트',date:"'26.01.15",title:'현대_협력사계약_2026.pdf',prev:'3조 협력 범위: 본 계약에서 규정하는 협력 조항은 다음과 같다...',author:'이지현 업로드',ext:false,dest:'파일로 이동'},
+      {icon:'📄',cls:'sb-file',lbl:'파일',proj:'삼성화재 프로젝트',date:"'26.02.03",title:'삼성화재_서비스계약_2026.docx',prev:'5조 면책 조항: 천재지변 또는 불가항력적인 사유로 인한 서비스 중단의 경우...',author:'김민준 업로드',ext:false,dest:'파일로 이동'},
+    ],
+    browse:{
+      file:[
+        {icon:'📄',ico_bg:'#fef9c3',title:'현대_협력사계약_2026.pdf',preview:'3조 협력 범위 항목 — 조항 키워드 8건 매칭',project:'현대자동차 프로젝트',author:'이지현',date:'2026-01-15',type:'파일',matchType:'content',snippet:'3조 협력 범위: 본 계약에서 규정하는 협력 <mark>조항</mark>은 다음과 같다. 1항 서비스 제공 범위...'},
+        {icon:'📄',ico_bg:'#fef9c3',title:'삼성화재_서비스계약_2026.docx',preview:'5조 면책 조항 포함',project:'삼성화재 프로젝트',author:'김민준',date:'2026-02-03',type:'파일',matchType:'content',snippet:'5조 면책 <mark>조항</mark>: 천재지변 또는 불가항력적인 사유로 인한 서비스 중단의 경우 책임을 지지 않는다.'},
+      ],
+    }
+  },
+  '채팅 검색: AI 업데이트':{
+    mode:'ai', masked:0,
+    cond:['통합 탭','최신순'], kw:['AI','업데이트','채팅'],
+    stats:{total:31, proj:0, post:0, comment:0, chat:31, file:4},
+    sum:`채팅에서 AI 관련 대화를 정리했습니다.
+
+1. 최근 주요 메시지
+ · 양용선 — "4/7 플로우 AI 업데이트 공지" (PM3팀 ONLY). <ic>[채팅] PM3팀 ONLY '26.03.30</ic>
+ · 신주경 — "팀장님 플로우 AI 모바일 QA 일정 확인했는데, 다음주 모메 플로우 배포가 있어서..." (PM3팀 ONLY). <ic>[채팅] PM3팀 ONLY '26.03.20</ic>
+ · 양용선 — "내일 오후로 미팅 진행하시죠~ 3/24(화) 오후에 AI사업개발과 전체 미팅". <ic>[채팅] AI사업개발실 X PM3팀 '26.03.23</ic>`,
+    srcs:[
+      {icon:'○',cls:'sb-chat',lbl:'채팅',proj:'PM3팀 ONLY',date:"'26.03.30",title:'4/7 플로우 AI 업데이트 공지',prev:'양용선: 4/7 플로우 AI 업데이트 공지',author:'양용선',ext:false,dest:'채팅으로 이동'},
+      {icon:'○',cls:'sb-chat',lbl:'채팅',proj:'PM3팀 ONLY',date:"'26.03.20",title:'플로우 AI 모바일 QA 일정',prev:'신주경: 팀장님 플로우 AI 모바일 QA 일정 확인했는데, 다음주 모메 플로우 배포가 있어서 금...',author:'신주경',ext:false,dest:'채팅으로 이동'},
+      {icon:'○',cls:'sb-chat',lbl:'채팅',proj:'AI사업개발실 X PM3팀',date:"'26.03.23",title:'AI사업개발 전체 미팅',prev:'양용선: 내일 오후로 미팅 진행하시죠~ 3/24(화) 오후에 AI사업개발과 전체 미팅',author:'양용선',ext:false,dest:'채팅으로 이동'},
+    ],
+    browse:{
+      chat:[
+        {icon:'○',ico_bg:'#eff6ff',title:'4/7 플로우 AI 업데이트 공지',preview:'4/7 플로우 AI 업데이트 공지',project:'PM3팀 ONLY',author:'양용선',date:'2026-03-30 11:10',type:'채팅',
+          chatSender:'양용선',chatRoom:'PM3팀 ONLY',chatMsg:'4/7 플로우 <mark>AI</mark> 업데이트 공지',chatColor:'#374151'},
+        {icon:'○',ico_bg:'#eff6ff',title:'AI 모바일 QA 일정',preview:'팀장님 플로우 AI 모바일 QA 일정 확인했는데...',project:'PM3팀 ONLY',author:'신주경',date:'2026-03-20 18:00',type:'채팅',
+          chatSender:'신주경',chatRoom:'PM3팀 ONLY',chatMsg:'팀장님 플로우 <mark>AI</mark> 모바일 QA 일정 확인했는데, 다음주 모메, 플로우 배포가 있어서 금...',chatColor:'#7c3aed'},
+        {icon:'○',ico_bg:'#eff6ff',title:'AI사업개발 전체 미팅',preview:'내일 오후로 미팅 진행하시죠~',project:'AI사업개발실 X PM3팀',author:'양용선',date:'2026-03-23 14:31',type:'채팅',
+          chatSender:'양용선',chatRoom:'AI사업개발실 X PM3팀',chatMsg:'내일 오후로 미팅 진행하시죠~ 3/24(화) 오후에 <mark>AI</mark>사업개발과 전체 미팅',chatColor:'#374151'},
+        {icon:'○',ico_bg:'#eff6ff',title:'ai 스튜디오에서 작업',preview:'이런 건 ai 스튜디오에서 작업을 하는 게 낫겠네요 담부턴 ㅠ',project:'AI사업개발실 X PM3팀',author:'양용선',date:'2026-03-20 17:24',type:'채팅',
+          chatSender:'양용선',chatRoom:'AI사업개발실 X PM3팀',chatMsg:'이런 건 <mark>ai</mark> 스튜디오에서 작업을 하는 게 낫겠네요 담부턴 ㅠ',chatColor:'#374151'},
+        {icon:'○',ico_bg:'#eff6ff',title:'통합 검색은 AI와 SaaS 구분 없이',preview:'통합 검색은 일단 AI와 사스 구분 없이 되는대로 통합으로 작성해볼게요. 그 후에 필터',project:'권보민, 김원모, 유민호',author:'권보민',date:'2026-03-25',type:'채팅',
+          chatSender:'권보민',chatRoom:'권보민, 김원모, 유민호',chatMsg:'통합 검색은 일단 <mark>AI</mark>와 사스 구분 없이 되는대로 통합으로 작성해볼게요. 그 후에 필터',chatColor:'#059669'},
+      ],
+    }
+  },
+  '할일 검색: 내 담당 지연 업무':{
+    mode:'ai', masked:0,
+    cond:['게시물 탭','최신순'], kw:['할일','지연','내 담당'],
+    stats:{total:20, proj:0, post:20, comment:0, chat:0, file:0},
+    sum:`내가 담당 중인 지연된 업무를 정리했습니다.
+
+1. 기획 피드백 대기
+ · AI — 기획 피드백 상태, 마감 3/13. <ic>[할일] flow AI 신규/개선 건 '26.03.13</ic>
+ · 01. 대화와 검색 — 기획 피드백 상태, 마감 3/12. <ic>[할일] flow AI 신규/개선 건 '26.03.12</ic>
+ · 02. 프로젝트 에이전트 — 기획 피드백 상태, 마감 3/12. <ic>[할일] flow AI 신규/개선 건 '26.03.12</ic>
+
+2. 대기 중
+ · 제품소개서 — 대기 상태, 마감 3/27. <ic>[할일] flow AI 신규/개선 건 '26.03.27</ic>`,
+    srcs:[
+      {icon:'✅',cls:'sb-task',lbl:'할일',proj:'flow AI 신규/개선 건',date:"'26.03.13",title:'AI',prev:'기획 피드백 | 마감 03-13',author:'양용선 담당',ext:false,dest:'업무로 이동'},
+      {icon:'✅',cls:'sb-task',lbl:'할일',proj:'flow AI 신규/개선 건',date:"'26.03.12",title:'01. 대화와 검색',prev:'기획 피드백 | 마감 03-12',author:'양용선 담당',ext:false,dest:'업무로 이동'},
+      {icon:'✅',cls:'sb-task',lbl:'할일',proj:'flow AI 신규/개선 건',date:"'26.03.12",title:'02. 프로젝트 에이전트',prev:'기획 피드백 | 마감 03-12',author:'양용선 담당',ext:false,dest:'업무로 이동'},
+      {icon:'✅',cls:'sb-task',lbl:'할일',proj:'flow AI 신규/개선 건',date:"'26.03.27",title:'제품소개서',prev:'대기 | 마감 03-27',author:'양용선 담당',ext:false,dest:'업무로 이동'},
+    ],
+    browse:{
+      post:[
+        {icon:'✅',ico_bg:'#fce7f3',title:'AI',preview:'기획 피드백',project:'flow AI 신규/개선 건',author:'양용선',date:'03-13',type:'할일',todoStatus:'기획 피드백',todoStatusCls:'todo-s-fb',todoDeadline:'03-13',todoOverdue:true,todoPriority:''},
+        {icon:'✅',ico_bg:'#fce7f3',title:'01. 대화와 검색',preview:'기획 피드백',project:'flow AI 신규/개선 건',author:'양용선',date:'03-12',type:'할일',todoStatus:'기획 피드백',todoStatusCls:'todo-s-fb',todoDeadline:'03-12',todoOverdue:true,todoPriority:''},
+        {icon:'✅',ico_bg:'#e0f2fe',title:'제품소개서',preview:'대기',project:'flow AI 신규/개선 건',author:'양용선',date:'03-27',type:'할일',todoStatus:'대기',todoStatusCls:'todo-s-wait',todoDeadline:'03-27',todoOverdue:true,todoPriority:''},
+        {icon:'✅',ico_bg:'#fce7f3',title:'02. 프로젝트 에이전트',preview:'기획 피드백',project:'flow AI 신규/개선 건',author:'양용선',date:'03-12',type:'할일',todoStatus:'기획 피드백',todoStatusCls:'todo-s-fb',todoDeadline:'03-12',todoOverdue:true,todoPriority:''},
+        {icon:'✅',ico_bg:'#fce7f3',title:'03. 어드민 대시보드',preview:'기획 피드백',project:'flow AI 신규/개선 건',author:'양용선',date:'03-12',type:'할일',todoStatus:'기획 피드백',todoStatusCls:'todo-s-fb',todoDeadline:'03-12',todoOverdue:true,todoPriority:''},
+        {icon:'✅',ico_bg:'#fef3c7',title:'02. PRD 1차',preview:'피드백',project:'flow AI 신규/개선 건',author:'양용선',date:'03-29',type:'할일',todoStatus:'피드백',todoStatusCls:'todo-s-review',todoDeadline:'03-29',todoOverdue:true,todoPriority:''},
+      ],
+    }
+  },
+  '위키 검색: 파일 첨부 문서':{
+    mode:'wiki', masked:0,
+    cond:['위키','관련도순'], kw:['파일','첨부','주간보고'],
+    stats:{total:4, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:4},
+    sum:`위키에서 파일이 첨부된 문서를 찾았습니다.
+
+1. 주간보고 양식
+ · CJ온트너 주요 이슈 문서 — pptx 파일 5.5MB 첨부. "마드라스체크 주간 보고 기본 양식_20260309.pptx". <ic>[위키] AI사업개발실 '26.03.09</ic>
+
+2. 파일 내부 텍스트 매칭
+ · 주간보고 양식 파일 내부에 "SLA", "온보딩", "flow AI" 키워드 포함. <ic>[위키 파일] AI사업개발실 '26.03.30</ic>`,
+    srcs:[
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'AI사업개발실',date:"'26.03.09",title:'CJ온트너 주요 이슈_2026',prev:'마드라스체크 주간 보고 기본 양식_20260309.pptx (5.5MB) 첨부',author:'Daniel 작성',ext:true,dest:'위키 페이지로 이동'},
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'AI사업개발실',date:"'26.03.30",title:'마드라스체크 주간 보고 기본 양식_20260309.pptx',prev:'파일 내부 — SLA 조건, 온보딩 일정, flow AI 현황 포함',author:'Daniel 업로드',ext:true,dest:'위키 페이지로 이동'},
+    ],
+    browse:{
+      wiki:[
+        {icon:'📖',ico_bg:'#f0fdfa',title:'CJ온트너 주요 이슈_2026',preview:'마드라스체크 주간 보고 기본 양식_20260309.pptx 첨부',project:'AI사업개발실',author:'Daniel',date:'2026-03-09',type:'위키',
+          wikiFiles:[{name:'마드라스체크 주간 보고 기본 양식_20260309.pptx',size:'5.5 MB',icon:'📊'}]},
+        {icon:'📖',ico_bg:'#f0fdfa',title:'flow AI 기획 문서 v2',preview:'flow AI 기획 문서 첨부 포함',project:'AI사업개발실',author:'Daniel',date:'2026-03-25',type:'위키',
+          wikiFiles:[{name:'flow_ai_final_plan.pptx',size:'8.4 MB',icon:'📊'}],snippet:'...SLA 조건, <mark>온보딩</mark> 일정, flow AI 현황...'},
+      ],
+    }
+  },
+  '위키 검색: 업무 연결 콘텐츠':{
+    mode:'wiki', masked:0,
+    cond:['위키','관련도순'], kw:['업무','게시글','연결','삽입'],
+    stats:{total:3, proj:0, post:0, comment:0, chat:0, file:0, chatfile:0, wiki:3},
+    sum:`위키 본문에 삽입된 플로우 업무·게시글을 찾았습니다.
+
+1. 업무 임베드
+ · CJ온트너 주요 이슈 문서 — 온트너 QA 서버 구축 업무 임베드. <ic>[위키] AI사업개발실 '26.03.27</ic>
+ · flow AI 신규 기획 문서 — 04-2. 목업 화면 2차 업무 임베드. <ic>[위키] AI사업개발실 '26.03.30</ic>
+
+2. 게시글 임베드
+ · 온트너 회의록 페이지 — [3/25] 개발 & 운영 회의록 게시글 임베드. <ic>[위키] 온트너 앱 개발 '26.03.25</ic>`,
+    srcs:[
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'AI사업개발실',date:"'26.03.27",title:'CJ온트너 주요 이슈_2026',prev:'임베드 업무: [신규] 온트너 QA 서버 구축 | 진행 90%',author:'Daniel 작성',ext:true,dest:'위키 페이지로 이동'},
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'AI사업개발실',date:"'26.03.30",title:'flow AI 신규 기획',prev:'임베드 업무: 04-2. 목업 화면 2차 | 진행',author:'Daniel 작성',ext:true,dest:'위키 페이지로 이동'},
+      {icon:'📖',cls:'sb-wiki',lbl:'위키',proj:'온트너 앱 개발',date:"'26.03.25",title:'온트너 회의록',prev:'임베드 게시글: [3/25] 개발 & 운영 회의록 | 양용선 PM3팀',author:'Daniel 작성',ext:true,dest:'위키 페이지로 이동'},
+    ],
+    browse:{
+      wiki:[
+        {icon:'📖',ico_bg:'#f0fdfa',title:'CJ온트너 주요 이슈_2026',preview:'온트너 QA 서버 구축 업무 임베드 포함',project:'AI사업개발실',author:'Daniel',date:'2026-03-27',type:'위키',
+          wikiTasks:[{title:'[신규] 온트너 QA 서버 구축',status:'완료',statusCls:'ts-done',assignee:'우성호',deadline:'2026-03-31'}]},
+        {icon:'📖',ico_bg:'#f0fdfa',title:'flow AI 신규 기획',preview:'04-2. 목업 화면 2차 업무 임베드 포함',project:'AI사업개발실',author:'Daniel',date:'2026-03-30',type:'위키',
+          wikiTasks:[{title:'04-1. 목업 화면',status:'완료',statusCls:'ts-done',assignee:'양용선',deadline:'2026-03-29'},{title:'04-2. 목업 화면 2차',status:'진행',statusCls:'ts-progress',assignee:'양용선',deadline:'2026-03-30'}]},
+        {icon:'📖',ico_bg:'#f0fdfa',title:'온트너 회의록',preview:'[3/25] 개발 & 운영 회의록 게시글 임베드 포함',project:'온트너 앱 개발',author:'Daniel',date:'2026-03-25',type:'위키',
+          wikiPosts:[{author:'양용선',team:'PM3팀',date:'2026-03-25 16:40',title:'[3/25] 개발 & 운영 회의록',preview:'- 일시: 2026년 3월 25일 (수) 11:00~12:10\n- 참석자: CJ 측 관계자, 마드라스체크(서동석, 서현원, 양용선, 우성호, 이경민, 조기완)\n- 주요 안건: 메이저 기술 이슈 해결, 앱 UI/UX 개선, 신규 기능(알림/회원가입) 도입'}]},
+      ],
+    }
+  },
+  '알림 검색: 온트너':{
+    mode:'ai', masked:0,
+    cond:['통합 탭','최신순'], kw:['온트너','알림'],
+    stats:{total:161, proj:0, post:0, comment:0, chat:0, file:0, noti:161},
+    sum:`온트너 관련 알림을 정리했습니다.
+
+ · 기호현님이 댓글을 남겼습니다 — 피드백 → 완료 상태 변경. <ic>[알림] 온트너 앱 개발 프로젝트 '26.03.30</ic>
+ · 박제원님이 댓글을 남겼습니다 — 개발로 접속 시 홈이 403에러. <ic>[알림] 온트너 앱 개발 프로젝트 '26.03.30</ic>
+ · 신주경님이 일정을 등록했습니다 — [런던] 플로우 AI 모바일 회의. <ic>[알림] 캘린더 '26.03.30</ic>
+ · 신주경님이 댓글을 남겼습니다 — 사이드메뉴 스와이프, 취소 버튼 동작 여부. <ic>[알림] flow AI QA 🔧 '26.03.30</ic>`,
+    srcs:[
+      {icon:'🔔',cls:'sb-chat',lbl:'알림',proj:'온트너 앱 개발 프로젝트',date:"'26.03.30",title:'온트너 QA 전용 서버 구축 안내',prev:'기호현님의 댓글 등록 — 피드백 → 완료',author:'기호현',ext:false,dest:'알림으로 이동'},
+      {icon:'🔔',cls:'sb-chat',lbl:'알림',proj:'온트너 앱 개발 프로젝트',date:"'26.03.30",title:'온트너',prev:'박제원님의 댓글 등록 — 개발로 접속 시 홈 403에러',author:'박제원',ext:false,dest:'알림으로 이동'},
+      {icon:'🔔',cls:'sb-cal',lbl:'알림',proj:'캘린더',date:"'26.03.30",title:'[런던] 플로우 AI 모바일 회의',prev:'신주경님의 일정 등록',author:'신주경',ext:false,dest:'알림으로 이동'},
+      {icon:'🔔',cls:'sb-task',lbl:'알림',proj:'flow AI QA 🔧',date:"'26.03.30",title:'FlowAI QA 🔧 댓글',prev:'신주경님의 댓글 — 사이드메뉴 스와이프, 취소 버튼 동작 여부',author:'신주경',ext:false,dest:'알림으로 이동'},
+    ],
+    browse:{
+      noti:[
+        {icon:'🔔',title:'온트너 QA 전용 서버 구축 안내',preview:'기호현님이 댓글을 남겼습니다 — 피드백 → 완료 상태 변경',project:'온트너 앱 개발 프로젝트',author:'기호현',date:'2026-03-30',type:'알림'},
+        {icon:'🔔',title:'온트너',preview:'박제원님이 댓글을 남겼습니다 — 개발로 접속 시 홈이 403에러',project:'온트너 앱 개발 프로젝트',author:'박제원',date:'2026-03-30',type:'알림'},
+        {icon:'🔔',title:'[런던] 플로우 AI 모바일 회의',preview:'신주경님이 일정을 등록했습니다',project:'캘린더',author:'신주경',date:'2026-03-30',type:'알림'},
+        {icon:'🔔',title:'FlowAI QA 🔧 댓글',preview:'신주경님이 댓글을 남겼습니다 — 사이드메뉴 스와이프, 취소 버튼 동작 여부',project:'flow AI QA 🔧',author:'신주경',date:'2026-03-30',type:'알림'},
+      ]
+    }
+  },
+  'FAIL_자음':{mode:'fail',failType:'retry',failMsg:'입력하신 내용을 인식할 수 없습니다. 한글 또는 영문으로 검색어를 입력해 주세요.'},
+  'FAIL_키워드':{mode:'fail',failType:'noresult',failMsg:'플로우 내에 관련 정보가 없습니다. 다른 키워드로 검색해 보세요.'},
+  'FAIL_중지':{mode:'fail',failType:'stop',failMsg:'검색 요청이 너무 광범위합니다. 더 구체적인 조건을 포함해 주세요.'},
+};
+const FAIL={retries:[
+  {lbl:'최초',cond:['통합 탭','최신순'],kw:['ㅁㄹㅇㄴ','ㄹㄷㅁ']},
+  {lbl:'추가 1',cond:['통합 탭','관련도순'],kw:['ㅁㄹ','ㄴㄷ']},
+  {lbl:'추가 2',cond:['전체','최신순'],kw:['ㄹ','ㅇ']},
+]};
+
+// 자연어 쿼리 → SC 키 라우팅 테이블
+// keywords 중 하나라도 포함되면 해당 SC key로 매핑
+const NL_ROUTES = [
+  // 캘린더
+  { keywords:['신주경','참석','회의'], key:'캘린더 검색: 신주경 참석 일정', tab:'cal' },
+  { keywords:['다음 주','다음주','일정'], key:'캘린더 검색: 다음 주 일정', tab:'cal' },
+  { keywords:['오전 회의','오전에','이번 주 회의'], key:'캘린더 검색: 이번 주 오전 회의', tab:'cal' },
+  { keywords:['전사 일정','타운홀','이번 달 일정'], key:'캘린더 검색: 이번 달 전사 일정', tab:'cal' },
+  { keywords:['김지훈','팀장 일정'], key:'캘린더 검색: 김지훈 팀장 일정', tab:'cal' },
+  // 이메일
+  { keywords:['계약 이메일','계약 메일','계약 관련 이메일'], key:'이메일 검색: 계약 관련 메일', tab:'email' },
+  { keywords:['입사 안내','신규 입사','웰컴 메일'], key:'이메일 검색: 신규 입사 안내', tab:'email' },
+  { keywords:['리마인더','미팅 리마인더','리마인더 이메일'], key:'이메일 검색: 미팅 리마인더', tab:'email' },
+  // 위키
+  { keywords:['개인정보처리방침','개인정보'], key:'위키 검색: 개인정보처리방침', tab:'wiki' },
+  { keywords:['온보딩 가이드','온보딩'], key:'위키 검색: 온보딩 가이드', tab:'wiki' },
+  { keywords:['api 연동','api 정책'], key:'위키 검색: API 연동 정책', tab:'wiki' },
+  { keywords:['위키 파일','위키 첨부','주간보고'], key:'위키 검색: 파일 첨부 문서', tab:'wiki' },
+  { keywords:['위키 업무','위키 연결','임베드'], key:'위키 검색: 업무 연결 콘텐츠', tab:'wiki' },
+  // 업무
+  { keywords:['이번 주 마감','마감 업무','진행 중 마감'], key:'업무 검색: 진행 중 이번 주 마감', tab:null },
+  { keywords:['우성호 담당','우성호 업무','우성호 책임'], key:'업무 검색: 우성호 담당 업무', tab:null },
+  { keywords:['긴급','긴급 우선순위','급한 업무'], key:'업무 검색: 긴급 우선순위', tab:null },
+  // 히스토리·투표·할일
+  { keywords:['상태 변경','변경 이력','히스토리'], key:'히스토리 검색: 온트너 상태 변경', tab:null },
+  { keywords:['출시 일정 투표','투표 결과','출시 투표'], key:'투표 결과: 출시 일정 투표', tab:null },
+  { keywords:['코드 리뷰','리뷰 방식 투표'], key:'투표 결과: 코드 리뷰 방식', tab:null },
+  { keywords:['지연된 할일','지연 할일','내 할일'], key:'할일 검색: 내 담당 지연 업무', tab:null },
+  // 파일·채팅
+  { keywords:['apk','빌드 파일','온트너 빌드'], key:'파일 내부 검색: APK 빌드', tab:null },
+  { keywords:['드라이브','구글 드라이브','flow AI 기획'], key:'드라이브 검색: flow AI 기획', tab:'drive' },
+  { keywords:['계약서 조항','조항','계약서 내용'], key:'파일 내부 검색: 계약서 조항', tab:null },
+  { keywords:['채팅 ai','ai 채팅','ai 업데이트'], key:'채팅 검색: AI 업데이트', tab:null },
+  // 해시태그
+  { keywords:['#온트너'], key:'온트너', tab:null },
+  { keywords:['#계약서'], key:'해시태그: 계약서', tab:null },
+  // 알림
+  { keywords:['알림','온트너 알림','내 알림'], key:'알림 검색: 온트너', tab:null },
+  // 일반
+  { keywords:['신년사','새해 인사'], key:'신년사', tab:null },
+  { keywords:['온트너'], key:'온트너', tab:null },
+  { keywords:['계약서 2026','2026 계약서'], key:'계약서 2026', tab:null },
+];
+
+function routeNL(q){
+  const lower = q.toLowerCase();
+  for(const route of NL_ROUTES){
+    if(route.keywords.some(kw => lower.includes(kw.toLowerCase()))){
+      return route;
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════ CONTEXT
+function setCtx(c){
+  ctx = c;
+  // 프로젝트 내부로 전환 시 외부 탭 초기화
+  if(c==='project'){ extTab=null; regTab=null; }
+  document.getElementById('ctxGlobal').classList.toggle('active', c==='global');
+  document.getElementById('ctxProject').classList.toggle('active', c==='project');
+  updateSboxMode();
+}
+// 초기 설정
+document.addEventListener('DOMContentLoaded',()=>{
+  setCtx('global');
+});
+
+// ═══════════════════════════════════════════ DROPDOWN RENDER
+function renderScopeChip(){
+  const el = document.getElementById('scopeChip');
+  if(ctx==='project'){
+    el.innerHTML=`<div class="scope-chip">📁 ${PROJECT_NAME} <span class="scope-x" onclick="exitProjectScope(event)">×</span></div>`;
+    el.style.display='block';
+  } else {
+    el.innerHTML='';
+    el.style.display='none';
+  }
+}
+
+function renderTabsWrap(){
+  const wrap = document.getElementById('ddTabsWrap');
+
+  function tab(id, label){
+    const on = regTab===id ? 'on' : '';
+    return `<button class="t-reg ${on}" onclick="selReg(this,'${id}')">${label}</button>`;
+  }
+
+  const rowLabel = (text) => `<span style="font-size:10px;font-weight:700;color:var(--mut);letter-spacing:.5px;white-space:nowrap;flex-shrink:0">${text}</span>`;
+  const rowDivider = `<div style="width:100%;height:1px;background:var(--bdr);margin:4px 0 2px"></div>`;
+
+  if(ctx==='project'){
+    wrap.innerHTML=`
+      <div class="dd-row">
+        <div id="aiTag"></div>
+      </div>
+      ${rowDivider}
+      <div class="dd-row">
+        ${tab('post',   '≡ 게시물')}
+        ${tab('comment','💬 댓글')}
+        ${tab('file',   '□ 파일')}
+        ${tab('noti',   '🔔 알림')}
+      </div>`;
+  } else {
+    wrap.innerHTML=`
+      <div class="dd-row" style="align-items:center">
+        <div id="aiTag"></div>
+        <div id="extTabs" style="display:contents"></div>
+      </div>
+      ${rowDivider}
+      <div class="dd-row">
+        ${tab('proj',   '□ 프로젝트')}
+        ${tab('post',   '≡ 게시물')}
+        ${tab('comment','💬 댓글')}
+        ${tab('chat',   '○ 채팅')}
+        ${tab('file',   '□ 파일')}
+        ${tab('noti',   '🔔 알림')}
+      </div>`;
+    renderExtTabs();
+  }
+  renderAiTag();
+}
+
+function renderAiTag(){
+  const el = document.getElementById('aiTag');
+  if(!el) return;
+  el.innerHTML = aiOn
+    ? `<div class="t-ai-on" onclick="toggleAi(event)" title="클릭하면 AI 검색이 꺼집니다" style="cursor:pointer">✦ AI 검색 <span class="ai-x">×</span></div>`
+    : `<div class="t-ai-off" onclick="toggleAi(event)">✦ AI 검색</div>`;
+}
+
+function renderExtTabs(){
+  const el = document.getElementById('extTabs');
+  if(!el) return;
+  if(aiOn){
+    el.innerHTML = [
+      ['wiki',  '📖 위키',          '위키 문서·파일 내부 검색'],
+      ['cal',   '📅 캘린더',        '일정·참석자·기간 검색'],
+      ['email', '✉️ 이메일',        '이메일·첨부파일 검색'],
+      ['drive', '📗 구글 드라이브', '파일 내부 텍스트 검색'],
+    ].map(([k,label,tip])=>`
+      <div class="tt">
+        <button class="t-ext ${extTab===k?'on':''}" onclick="selExt('${k}')">${label}</button>
+        <div class="tt-tip">${tip}</div>
+      </div>`).join('');
+  } else {
+    [
+      ['wiki',  '📖 위키'],
+      ['cal',   '📅 캘린더'],
+      ['email', '✉️ 이메일'],
+      ['drive', '📗 구글 드라이브'],
+    ].forEach(([k,label])=>{
+      el.innerHTML += `<div class="tt">
+        <div class="t-ext-dis" onclick="autoEnableExt('${k}')">${label}</div>
+        <div class="tt-tip">클릭하면 AI 검색이 켜집니다</div>
+      </div>`;
+    });
+  }
+}
+
+function renderDd(){
+  renderScopeChip();
+  renderTabsWrap();
+  updateSboxMode();
+  updatePlaceholder();
+}
+
+function exitProjectScope(e){
+  e.stopPropagation();
+  setCtx('global');
+  renderDd();
+}
+
+function updateSboxMode(){
+  const m = document.getElementById('sboxMode');
+  const sph = document.getElementById('sph');
+  if(!aiOn){
+    m.className='sbox-mode off';
+    m.textContent='일반 검색';
+    if(sph && !sph.classList.contains('has-val'))
+      sph.textContent='검색어를 입력해 주세요.';
+    return;
+  }
+  m.className='sbox-mode';
+  if(sph && !sph.classList.contains('has-val'))
+    sph.textContent='업무, 파일, 대화를 자연어로 검색해보세요';
+  if(ctx==='project'){ m.textContent='📁 프로젝트 내부'; return; }
+  const labels={wiki:'📖 위키 검색',cal:'📅 캘린더 검색',email:'✉️ 이메일 검색',drive:'📗 구글 드라이브 검색'};
+  m.textContent = extTab ? labels[extTab] : '✦ AI 검색';
+}
+
+// ═══════════════════════════════════════════ TOGGLE/SELECT
+function updatePlaceholder(){
+  const inp = document.getElementById('ddinp');
+  if(!inp) return;
+  inp.placeholder = aiOn
+    ? '찾으실 내용을 키워드 또는 자연어로 입력하세요'
+    : '검색어를 입력해 주세요.';
+}
+function toggleAi(e){
+  e.stopPropagation();
+  aiOn=!aiOn;
+  if(!aiOn) extTab=null;
+  renderDd();
+  updatePlaceholder();
+}
+function selExt(type){
+  if(!aiOn) return;
+  extTab = extTab===type ? null : type;
+  regTab = null;
+  renderTabsWrap();  // 전체 재렌더 — 상태와 UI 일치 보장
+  updateSboxMode();
+}
+function selReg(el,type){
+  extTab = null;     // 외부 탭 선택 항상 초기화
+  regTab = regTab===type ? null : type;
+  renderTabsWrap();  // 전체 재렌더 — 상태와 UI 일치 보장
+  updateSboxMode();
+}
+function autoEnableExt(type){
+  aiOn = true;
+  extTab = type;
+  regTab = null;
+  renderDd();
+}
+function doShake(el){
+  el.classList.remove('shake'); void el.offsetWidth;
+  el.classList.add('shake');
+  el.addEventListener('animationend',()=>el.classList.remove('shake'),{once:true});
+}
+
+// ═══════════════════════════════════════════ DROPDOWN OPEN/CLOSE
+let showFeedbackNums = true;
+function toggleFeedbackNums(){
+  showFeedbackNums = !showFeedbackNums;
+  document.querySelectorAll('.num-badge, .num-badge-sm').forEach(el=>{
+    el.style.display = showFeedbackNums ? '' : 'none';
+  });
+  const btn = document.getElementById('toggleNumBtn');
+  if(btn) btn.textContent = showFeedbackNums ? '① 피드백 번호 숨기기' : '① 피드백 번호 보이기';
+}
+function openHashDemo(tag='#온트너'){
+  openDd();
+  const inp = document.getElementById('ddinp');
+  if(!inp) return;
+  inp.value = tag;
+  inp.dispatchEvent(new Event('input'));
+  inp.focus();
+  setTimeout(()=>{ inp.setSelectionRange(inp.value.length, inp.value.length); }, 50);
+}
+function openDd(){
+  renderDd(); renderRec();
+  document.getElementById('dd').style.display='block';
+  document.getElementById('sbox').classList.add('open');
+  document.getElementById('ov').classList.add('on');
+  setTimeout(()=>document.getElementById('ddinp').focus(),50);
+}
+function closeDd(){
+  document.getElementById('dd').style.display='none';
+  document.getElementById('sbox').classList.remove('open');
+  document.getElementById('ov').classList.remove('on');
+  updateSboxMode(); // 닫힐 때 헤더를 현재 상태와 항상 동기화
+}
+function onKey(e){
+  if(e.key==='Enter'){const q=e.target.value.trim();if(q)go(q);}
+  if(e.key==='Escape') closeDd();
+}
+function onInput(e){
+  const val = e.target.value;
+  document.getElementById('inpClr').style.display = val ? 'block' : 'none';
+  // # 으로 시작하면 해시태그 모드
+  const isHash = val.startsWith('#');
+  if(isHash !== hashtagMode){
+    hashtagMode = isHash;
+    renderHashtagBanner();
+  }
+}
+function renderHashtagBanner(){
+  const wrap = document.getElementById('ddTabsWrap');
+  const existing = document.getElementById('hashtagBanner');
+  if(hashtagMode && !existing){
+    const banner = document.createElement('div');
+    banner.id = 'hashtagBanner';
+    banner.className = 'dd-hashtag-banner';
+    banner.innerHTML = '# <strong>해시태그 검색 모드</strong> — #태그명으로 검색합니다. 탭 필터는 적용되지 않습니다.';
+    wrap.insertBefore(banner, wrap.firstChild);
+    // 2행 탭 흐릿하게
+    const rows = wrap.querySelectorAll('.dd-row:nth-child(2)');
+    rows.forEach(r=>r.style.opacity='0.3');
+  } else if(!hashtagMode && existing){
+    existing.remove();
+    const rows = wrap.querySelectorAll('.dd-row');
+    rows.forEach(r=>r.style.opacity='');
+  }
+}
+function clearInp(){
+  document.getElementById('ddinp').value='';
+  document.getElementById('inpClr').style.display='none';
+  document.getElementById('ddinp').focus();
+}
+document.addEventListener('keydown',e=>{
+  if((e.altKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openDd();}
+});
+
+// ═══════════════════════════════════════════ RECENT
+function renderRec(){
+  const el=document.getElementById('recList');
+  if(!recents.length){el.innerHTML='<div style="font-size:13px;color:var(--mut);padding:8px 4px">최근 검색어가 없습니다</div>';return;}
+  el.innerHTML=recents.map((q,i)=>`
+    <div class="rec-item" onclick="go('${q.replace(/'/g,"\\'")}')">
+      <span class="rec-ico">🔍</span>
+      <span class="rec-txt">${q}</span>
+      <span class="rec-date">03-26</span>
+      <button class="rec-del" onclick="event.stopPropagation();delRec(${i})">×</button>
+    </div>`).join('');
+}
+function delRec(i){recents.splice(i,1);renderRec();}
+function clearRec(){recents=[];renderRec();}
+
+// ═══════════════════════════════════════════ SEARCH ENTRY
+function qs(q,tab=null,naturalQ=null){
+  if(tab){ aiOn=true; extTab=tab; regTab=null; }
+  const displayQ = naturalQ || q.replace(/^(위키|캘린더|이메일) 검색:\s*/, '');
+  go(q, !!tab, displayQ);
+}
+function go(q, keepTab=false, displayQ=null){
+  if(!keepTab){ extTab=null; regTab=null; }
+  if(!recents.includes(q)) recents.unshift(q);
+  if(recents.length>8) recents=recents.slice(0,8);
+  closeDd();
+  curQ=q;
+  curDisplayQ = displayQ||q;
+  curTab = aiOn ? 'search' : 'all';
+  const sph=document.getElementById('sph');
+  sph.textContent=curDisplayQ; sph.className='sbox-ph has-val';
+  updateSboxMode();
+  startSearch();
+}
+function goBack(){
+  document.getElementById('emptyS').style.display='';
+  document.getElementById('resS').style.display='none';
+  const sph=document.getElementById('sph');
+  sph.textContent='업무, 파일, 대화를 자연어로 검색해보세요';
+  sph.className='sbox-ph';
+  updateSboxMode();
+  clearTimeout(tmr);
+}
+
+// ═══════════════════════════════════════════ RENDER RESULT PAGE
+function startSearch(){
+  clearTimeout(tmr);
+
+  // SC에 키가 없으면 자연어 라우팅 시도
+  if(!SC[curQ]){
+    const route = routeNL(curQ);
+    if(route){
+      // 내부 조회 키를 라우팅된 SC 키로 교체 (표시 쿼리는 유지)
+      curQ = route.key;
+      if(route.tab){ aiOn=true; extTab=route.tab; }
+      renderTabsWrap();
+      updateSboxMode();
+    }
+  }
+
+  document.getElementById('emptyS').style.display='none';
+  document.getElementById('resS').style.display='block';
+
+  const isHash = curDisplayQ.startsWith('#');
+  const hashBadge = isHash
+    ? `<span style="background:#ede9fe;color:#6d28d9;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;margin-right:6px"># 해시태그 검색</span>`
+    : '';
+  document.getElementById('rtit').innerHTML=`${hashBadge}"<em>${curDisplayQ}</em>" 검색 결과`;
+
+  renderTabBar();
+  renderContent();
+}
+
+function renderTabBar(){
+  const s = SC[curQ];
+  const sts = (s && s.stats) ? s.stats : {};
+  const extOnly = aiOn && extTab !== null;
+  const searchActive = curTab === 'search';
+  const searchStyle = (!aiOn && !searchActive) ? 'opacity:.4;' : '';
+  const searchOnClick = (!aiOn && !searchActive) ? `enableAiFromTab()` : `switchTab('search')`;
+  const searchBtnClass = searchActive ? 'rt-search' : 'rt-search mode-browse';
+
+  let html = `<button class="${searchBtnClass}" style="${searchStyle}" onclick="${searchOnClick}">✦ AI 검색</button>`;
+
+  if(!extOnly){
+    // 프로젝트 내부: 프로젝트·채팅 탭 없음
+    const tabs = ctx==='project'
+      ? [
+          {id:'all',    label:'⊞ 전체 결과', cnt:(sts.post||0)+(sts.comment||0)+(sts.file||0)||null},
+          {id:'post',   label:'≡ 게시물',    cnt:sts.post||null},
+          {id:'comment',label:'💬 댓글',      cnt:sts.comment||null},
+          {id:'file',   label:'□ 파일',      cnt:sts.file||null},
+        ]
+      : [
+          {id:'all',    label:'⊞ 전체 결과', cnt:sts.total||null},
+          {id:'proj',   label:'□ 프로젝트',  cnt:sts.proj||null},
+          {id:'post',   label:'≡ 게시물',    cnt:sts.post||null},
+          {id:'comment',label:'💬 댓글',      cnt:sts.comment||null},
+          {id:'chat',   label:'○ 채팅',      cnt:sts.chat||null},
+          {id:'file',   label:'□ 파일',      cnt:sts.file||null},
+          // 구글 드라이브·알림은 해당 데이터가 있을 때만 표시
+          ...(s && s.browse && s.browse.file && s.browse.file.some(f=>f.matchType==='drive') ? [{id:'drive', label:'📗 구글 드라이브', cnt:null}] : []),
+          ...(sts.noti || (s && s.mode==='ai' && s.sum && s.sum.includes('[알림]')) ? [{id:'noti', label:'🔔 알림', cnt:sts.noti||null}] : []),
+        ];
+
+    html += `<div class="rtdiv"></div>`;
+    tabs.filter(t => t.id==='all' || t.cnt).forEach(t=>{
+      const cntHtml = t.cnt ? `<span class="rt-cnt">${t.cnt}${(s&&s.stats&&s.stats.total>t.cnt)?'+':''}</span>` : '';
+      const on = curTab===t.id ? 'on' : '';
+      html+=`<button class="rt ${on}" onclick="switchTab('${t.id}')">${t.label}${cntHtml}</button>`;
+    });
+
+    // 프로젝트 내부 컨텍스트 표시 배지
+    if(ctx==='project'){
+      html+=`<div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);flex-shrink:0">
+        <span style="background:#f0f0ff;border:1px solid #c7d7fd;border-radius:12px;padding:3px 10px;color:#3730a3;font-weight:600;font-size:11.5px">📁 ${PROJECT_NAME}</span>
+      </div>`;
+    }
+  }
+
+  document.getElementById('rtabsEl').innerHTML=html;
+}
+
+function switchTab(tabId){
+  clearTimeout(tmr);  // 진행 중인 AI 검색 타이머 중단
+  curTab=tabId;
+  renderTabBar();
+  renderContent();
+}
+
+function renderContent(){
+  const area=document.getElementById('contentArea');
+  area.innerHTML='';
+
+  const extOnly = aiOn && extTab !== null;
+
+  // 외부 단독 검색이거나 검색 탭이면 AI 카드 모드
+  if(curTab==='search' || extOnly){
+    renderAiOrEs(area);
+  } else {
+    renderBrowse(area);
+  }
+}
+
+// ─────────── AI / ES 모드
+function renderAiOrEs(area){
+  const wrap = document.createElement('div');
+  wrap.className='ai-layout';
+
+  const main = document.createElement('div');
+  main.className='ai-main';
+
+  const right = document.createElement('div');
+  right.className='src-panel';
+  // 우측 패널 헤더
+  right.innerHTML=`<div class="src-hd" id="srcHd">출처 (0)</div><div id="srcC"><div class="src-empty"><div style="font-size:32px;opacity:.25;margin-bottom:7px">📄</div><div style="font-size:12.5px;color:var(--mut)">검색 결과가 표시됩니다</div></div></div>`;
+
+  wrap.appendChild(main);
+  wrap.appendChild(right);
+  area.appendChild(wrap);
+
+  if(!aiOn){
+    renderEsMode(main);
+    const s=SC[curQ];
+    if(s) renderSrcs(s.srcs.filter(r=>!r.ext));
+  } else {
+    const s=SC[curQ];
+    if(!s) runFail(main,'retry');
+    else if(s.mode==='fail') runFail(main, s.failType, s.failMsg);
+    else renderAiCard(main,s);
+  }
+}
+
+function renderEsMode(main){
+  main.innerHTML=`
+    <div class="es-banner fadeUp">
+      <div class="es-banner-ico">🔍</div>
+      <div class="es-banner-body">
+        <h3>일반 검색 모드</h3>
+        <p>AI 검색이 꺼져 있어 키워드 검색으로 동작합니다.<br>상단 <strong>✦ AI 검색</strong> 탭을 클릭하면 AI 요약을 볼 수 있습니다.</p>
+      </div>
+    </div>`;
+  const s=SC[curQ];
+  if(s){
+    const intSrcs=s.srcs.filter(r=>!r.ext);
+    renderSrcs(intSrcs);
+  }
+}
+function enableAiFromTab(){
+  aiOn = true;
+  updateSboxMode();
+  curTab = 'search';
+  renderTabBar();
+  renderContent();
+}
+function turnAiOn(){ enableAiFromTab(); }
+
+function renderAiCard(main,s){
+  main.innerHTML=`
+    <div class="ai-card fi">
+      <div class="ai-title">AI 요약</div>
+      <div class="bdg ${s.masked>0?'b-mask':'b-ok'}">${s.masked>0?`🛡 ${s.masked}개 검색 항목 보안 마스킹 적용됨`:'🛡 입력 정보에 민감 항목 없음'}</div>
+      <div class="phd">
+        <div class="plbl" onclick="togProg()"><span id="pLbl">진행 중...</span> <span id="pTog">∧</span></div>
+        <div class="rtabsr" id="rTabsEl" style="display:none"></div>
+      </div>
+      <div class="steps" id="stepsC" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div id="sumArea" style="display:none"></div>
+      <div class="acts" id="actsEl" style="display:none">
+        <button class="act" onclick="cpSum()" title="복사"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+        <button class="act" title="공유"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
+      </div>
+      <button class="fbtn" id="fBtn" style="display:none" onclick="alert('flow AI 채팅으로 이동합니다 (프로토타입)')">
+        ✦ flow AI에서 자세히 탐색하기
+      </button>
+    </div>`;
+
+  let t=0;
+  tmr=setTimeout(()=>addStep('의도 분석','탐색 의도를 파악했어요.',[
+    {lbl:'검색 조건',chips:s.cond.map(c=>({t:c,c:'ck'}))},
+    {lbl:'검색 키워드',chips:s.kw.map(k=>({t:k,c:'ckw'}))},
+  ],'done'),t+=400);
+  tmr=setTimeout(()=>{
+    const chips=[{t:`총합 ${s.stats.total}건`,c:'ckt'}];
+    if(s.stats.proj)   chips.push({t:`프로젝트 ${s.stats.proj}`,c:'cp'});
+    if(s.stats.post)   chips.push({t:`게시글 ${s.stats.post}`,c:'cpo'});
+    if(s.stats.comment) chips.push({t:`댓글 ${s.stats.comment}`,c:'cc'});
+    if(s.stats.chat)   chips.push({t:`채팅 ${s.stats.chat}`,c:'cch'});
+    if(s.stats.file)   chips.push({t:`파일 ${s.stats.file}`,c:'cf'});
+    if(s.stats.chatfile) chips.push({t:`채팅파일 ${s.stats.chatfile}`,c:'ccf'});
+    if(s.stats.wiki)   chips.push({t:`위키 ${s.stats.wiki}`,c:'cw'});
+    if(s.stats.cal)    chips.push({t:`캘린더 ${s.stats.cal}`,c:'ccal'});
+    if(s.stats.email)  chips.push({t:`이메일 ${s.stats.email}`,c:'cem'});
+    addStep('플로우에서 탐색',`중복 제외 후 총 ${s.stats.total}건의 결과를 정리했어요.`,[{lbl:'',chips}],'done');
+  },t+=900);
+  tmr=setTimeout(()=>addStep('검색 결과 확인 중','',[],'spin'),t+=600);
+  tmr=setTimeout(()=>{
+    finDot();
+    const pLbl=document.getElementById('pLbl');
+    const stepsC=document.getElementById('stepsC');
+    const pTog=document.getElementById('pTog');
+    const actsEl=document.getElementById('actsEl');
+    const fBtn=document.getElementById('fBtn');
+    if(!pLbl||!stepsC) return; // 탭 전환으로 DOM이 교체된 경우
+    pLbl.textContent='작업 완료';
+    stepsC.style.display='none';
+    pTog.textContent='∨';
+    renderSum(s.sum);
+    renderSrcs(s.srcs);
+    if(actsEl) actsEl.style.display='flex';
+    if(fBtn) fBtn.style.display='flex';
+  },t+=1300);
+}
+
+function runFail(main, failType='retry', failMsg=null){
+  const defaultMsg = {
+    retry:   '요청하신 검색이 너무 복잡합니다. 더 간단한 검색어로 시도해 주세요.',
+    noresult:'플로우 내에 관련 정보가 없습니다. 다른 키워드로 검색해 보세요.',
+    stop:    '검색 요청이 너무 광범위합니다. 더 구체적인 조건을 포함해 주세요.',
+  };
+  const msg = failMsg || defaultMsg[failType] || defaultMsg.retry;
+
+  main.innerHTML=`
+    <div class="ai-card fi">
+      <div class="ai-title">AI 요약</div>
+      <div class="bdg b-ok">🛡 입력 정보에 민감 항목 없음</div>
+      <div class="phd">
+        <div class="plbl" onclick="togProg()"><span id="pLbl">진행 중...</span> <span id="pTog">∧</span></div>
+        <div class="rtabsr" id="rTabsEl" style="display:none"></div>
+      </div>
+      <div class="steps" id="stepsC" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div id="sumArea" style="display:none"></div>
+      <div class="acts" id="actsEl" style="display:none"><button class="act" onclick="cpSum()" title="복사"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="act" title="공유"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button></div>
+      <button class="fbtn" id="fBtn" style="display:none" onclick="alert('flow AI 채팅으로 이동합니다 (프로토타입)')">✦ flow AI에서 자세히 탐색하기</button>
+    </div>`;
+
+  function finish(label){
+    const pLbl=document.getElementById('pLbl');
+    const stepsC=document.getElementById('stepsC');
+    const pTog=document.getElementById('pTog');
+    const actsEl=document.getElementById('actsEl');
+    const fBtn=document.getElementById('fBtn');
+    if(!pLbl||!stepsC) return;
+    pLbl.textContent=label;
+    stepsC.style.display='none';
+    pTog.textContent='∨';
+    const a=document.getElementById('sumArea');
+    if(a){ a.style.display='block'; a.innerHTML=`<div class="fail-msg fi">${msg}<br><span class="fail-stop">[검색이 중지되었습니다]</span></div>`; }
+    if(actsEl) actsEl.style.display='flex';
+    if(fBtn) fBtn.style.display='flex';
+  }
+
+  // 즉시 중지
+  if(failType==='stop'){
+    setTimeout(()=>addStep('의도 분석','탐색 의도를 파악했어요.',[{lbl:'검색 조건',chips:[{t:'통합 탭',c:'ck'}]},{lbl:'검색 키워드',chips:[{t:curDisplayQ,c:'ckw'}]}],'done'),300);
+    setTimeout(()=>addStep('플로우에서 탐색','범위가 너무 넓어 탐색을 중단했습니다.',[{lbl:'',chips:[{t:'총합 0건',c:'ckt'}]}],'done'),1000);
+    setTimeout(()=>{ finDot(); finish('검색 중지'); },1800);
+    return;
+  }
+
+  // 결과 없음 (재시도 없이)
+  if(failType==='noresult'){
+    setTimeout(()=>addStep('의도 분석','탐색 의도를 파악했어요.',[{lbl:'검색 조건',chips:[{t:'통합 탭',c:'ck'}]},{lbl:'검색 키워드',chips:[{t:curDisplayQ,c:'ckw'}]}],'done'),300);
+    setTimeout(()=>addStep('플로우에서 탐색','중복 제외 후 총 0건의 결과를 정리했어요.',[{lbl:'',chips:[{t:'총합 0건',c:'ckt'}]}],'done'),900);
+    setTimeout(()=>addStep('검색 결과 확인 중','',[],'spin'),1400);
+    setTimeout(()=>{ finDot(); finish('검색 중지'); },2200);
+    return;
+  }
+
+  // 재시도 (기본 retry)
+  function runR(i){
+    const r=FAIL.retries[i];
+    document.getElementById('stepsC').innerHTML='';
+    const te=document.getElementById('rTabsEl');
+    te.style.display='flex';
+    te.innerHTML=FAIL.retries.slice(0,i+1).map((rt,j)=>`<div class="rtabr ${j===i?'on':''}">${rt.lbl} ↺</div>`).join('');
+    setTimeout(()=>{i>0
+      ?addStep('추가 분석',`키워드를 ${r.kw.join(', ')} 로 바꿔서 다시 탐색해요.`,[{lbl:'검색 조건',chips:r.cond.map(c=>({t:c,c:'ck'}))},{lbl:'검색 키워드',chips:r.kw.map(k=>({t:k,c:'ckw'}))}],'done')
+      :addStep('의도 분석','통합 탐색 의도로 보여요.',[{lbl:'검색 조건',chips:r.cond.map(c=>({t:c,c:'ck'}))},{lbl:'검색 키워드',chips:r.kw.map(k=>({t:k,c:'ckw'}))}],'done');
+    },300);
+    setTimeout(()=>addStep('플로우에서 탐색','중복 제외 후 총 0건의 결과를 정리했어요.',[{lbl:'',chips:[{t:'총합 0건',c:'ckt'}]}],'done'),900);
+    setTimeout(()=>addStep('검색 결과 확인 중','',[],'spin'),1400);
+    setTimeout(()=>{
+      finDot();
+      if(i<FAIL.retries.length-1){runR(i+1);return;}
+      finish('검색 중지');
+    },2000);
+  }
+  runR(0);
+}
+
+// ─────────── Browse 모드 (카테고리 탭)
+function renderBrowse(area){
+  const wrap=document.createElement('div');
+  wrap.className='browse-layout';
+
+  const main=document.createElement('div');
+  main.className='browse-main';
+
+  const s=SC[curQ];
+  // fail 모드는 browse 탭 비활성
+  if(s && s.mode==='fail'){
+    main.innerHTML=`<div style="text-align:center;padding:40px;color:var(--mut)">검색 결과가 없습니다</div>`;
+    wrap.appendChild(main);
+    area.appendChild(wrap);
+    return;
+  }
+  const q=curQ;
+  const hl=q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
+  function highlight(text){
+    if(!text||!hl) return text||'';
+    return text.replace(new RegExp(`(${hl})`, 'gi'), '<mark>$1</mark>');
+  }
+
+  function makeGroup(title, cnt, items, plusMore=false){
+    if(!items||!items.length) return '';
+    // 실제 표시 건수보다 통계가 많을 때만 + 표시
+    const hasMore = plusMore && cnt > items.length;
+    const cntLabel = hasMore ? cnt+'+' : cnt;
+
+    function renderItem(item){
+      const matchBadge = item.type==='파일' ? (() => {
+        if(item.matchType==='content') return `<span class="match-badge mb-content">내용 일치</span>`;
+        if(item.matchType==='drive')   return `<span class="match-badge mb-drive">구글 드라이브</span>`;
+        return `<span class="match-badge mb-name">파일명 일치</span>`;
+      })() : '';
+      const snippetHtml = item.snippet ? `<div class="file-snippet">… ${item.snippet} …</div>` : '';
+      const driveLabel = item.matchType==='drive' ? `<span class="drive-badge">📗 구글 드라이브</span>` : '';
+
+      // 채팅 타입 특수 렌더
+      if(item.type==='채팅'){
+        const colors=['#374151','#7c3aed','#059669','#b45309','#0369a1','#be185d'];
+        const avatarColor = item.chatColor || colors[Math.abs(item.chatSender?.charCodeAt(0)||0) % colors.length];
+        const initial = item.chatSender ? item.chatSender[0] : '?';
+        return `
+        <div class="chat-item" onclick="alert('채팅방으로 이동합니다 (프로토타입)')">
+          <div class="chat-avatar" style="background:${avatarColor}">${initial}</div>
+          <div class="chat-body">
+            <div class="chat-header">
+              <span class="chat-name">${item.chatSender||item.author}</span>
+              <span class="chat-date">${item.date||''}</span>
+              <span class="chat-room">${item.chatRoom||item.project}</span>
+            </div>
+            <div class="chat-msg">${item.chatMsg||highlight(item.preview)}</div>
+          </div>
+        </div>`;
+      }
+
+      // 할일 타입 특수 렌더
+      if(item.type==='할일'){
+        const priorityHtml = item.todoPriority==='high' ? '<span class="todo-priority">↑</span>' : '';
+        const deadlineCls = item.todoOverdue ? 'overdue' : '';
+        return `
+        <div class="todo-item" onclick="alert('업무로 이동합니다 (프로토타입)')">
+          <span class="todo-status ${item.todoStatusCls||'todo-s-wait'}">${item.todoStatus||'대기'}</span>
+          <span class="todo-title">${item.title}</span>
+          ${priorityHtml}
+          <span class="todo-deadline ${deadlineCls}">${item.todoDeadline||item.date}</span>
+        </div>`;
+      }
+
+      // 위키 타입 특수 렌더 (파일 첨부 / 업무 임베드)
+      if(item.type==='위키'){
+        const filesHtml = item.wikiFiles ? item.wikiFiles.map(f=>`
+          <div style="display:flex;align-items:center;gap:8px;background:#f8f9ff;border:1px solid #e0e7ff;border-radius:8px;padding:8px 12px;margin-top:7px">
+            <span style="font-size:18px">${f.icon||'📄'}</span>
+            <span style="font-size:12.5px;color:var(--txt);font-weight:500;flex:1">${f.name}</span>
+            <span style="font-size:11.5px;color:var(--mut)">${f.size}</span>
+          </div>`).join('') : '';
+        const tasksHtml = item.wikiTasks ? item.wikiTasks.map(t=>`
+          <div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-top:8px;background:#fff">
+            <div style="background:#f5f3ff;padding:10px 14px;display:flex;align-items:center;gap:7px;border-bottom:1px solid #e5e7eb">
+              <span style="font-size:13px">≡</span>
+              <span style="font-size:13px;font-weight:600;color:#3730a3">${t.title}</span>
+            </div>
+            <div style="padding:10px 14px">
+              <table style="width:100%;font-size:12.5px;border-collapse:collapse">
+                <tr><td style="color:var(--mut);padding:5px 0;width:80px">담당자</td><td style="color:var(--txt);font-weight:500">${t.assignee}</td></tr>
+                <tr><td style="color:var(--mut);padding:5px 0">상태</td><td><span style="background:#ede9fe;color:#6d28d9;border-radius:12px;padding:2px 10px;font-size:11.5px;font-weight:700">● ${t.status}</span></td></tr>
+                <tr><td style="color:var(--mut);padding:5px 0">마감일</td><td style="color:var(--txt)">${t.deadline} 까지</td></tr>
+                <tr><td style="color:var(--mut);padding:5px 0">우선순위</td><td style="color:var(--mut)">-</td></tr>
+              </table>
+            </div>
+            <div style="padding:7px 14px;border-top:1px solid #f3f4f6;display:flex;align-items:center;gap:5px">
+              <span style="font-size:11px;color:var(--mut)">🟣 flow.team</span>
+            </div>
+          </div>`).join('') : '';
+        const postsHtml = item.wikiPosts ? item.wikiPosts.map(p=>`
+          <div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-top:8px;background:#fff;padding:14px 16px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <div style="width:28px;height:28px;border-radius:50%;background:#374151;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">${p.author[0]}</div>
+              <span style="font-size:12.5px;font-weight:600;color:var(--txt)">${p.author}</span>
+              <span style="font-size:11.5px;color:var(--mut)">${p.team}</span>
+              <span style="font-size:11.5px;color:var(--mut);margin-left:auto">${p.date}</span>
+            </div>
+            <div style="font-size:13.5px;font-weight:700;color:var(--txt);margin-bottom:8px">${p.title}</div>
+            <div style="font-size:12.5px;color:var(--sub);line-height:1.65;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:4;overflow:hidden;-webkit-box-orient:vertical">${p.preview}</div>
+          </div>`).join('') : '';
+        const snippetHtml2 = snippetHtml;
+        return `
+        <div class="res-item" onclick="alert('위키 페이지로 이동합니다 (프로토타입)')">
+          <div class="res-item-ico" style="background:${item.ico_bg||'#f0fdfa'}">${item.icon}</div>
+          <div class="res-item-body">
+            <div class="res-item-title">${item.title}</div>
+            <div class="res-item-preview">${item.preview}</div>
+            ${filesHtml}${tasksHtml}${postsHtml}${snippetHtml}
+            <div class="res-item-meta" style="margin-top:6px">
+              <span>${item.project}</span><span class="dot-sep">·</span>
+              <span>${item.author}</span><span class="dot-sep">·</span>
+              <span>${item.date||''}</span>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      // 캘린더 타입 특수 렌더
+      if(item.type==='캘린더'){
+        const attendeesHtml = item.calAttendees
+          ? item.calAttendees.map(a=>`<span class="cal-attendee-chip">${a}</span>`).join('')
+          : '';
+        const dotColor = {'ct-meeting':'#10b981','ct-leave':'#ef4444','ct-halfday':'#f59e0b','ct-birthday':'#ec4899'}[item.calType]||'#10b981';
+        return `
+        <div class="cal-item" onclick="alert('캘린더로 이동합니다 (프로토타입)')">
+          <div class="cal-dot" style="background:${dotColor}"></div>
+          <div class="cal-body">
+            <div class="cal-title">
+              <span class="cal-type-badge ${item.calType||'ct-meeting'}">${item.calTypeLabel||'회의'}</span>${item.title}
+            </div>
+            <div class="cal-time">
+              🕐 ${item.calTime||''}
+              ${item.calLocation?`<span class="cal-location">📍 ${item.calLocation}</span>`:''}
+            </div>
+            ${attendeesHtml?`<div class="cal-attendees">👥 ${attendeesHtml}</div>`:''}
+            <div class="res-item-meta" style="margin-top:5px"><span>${item.project}</span><span class="dot-sep">·</span><span>${item.date||''}</span></div>
+          </div>
+        </div>`;
+      }
+
+      // 업무 타입 특수 렌더
+      if(item.type==='업무'){
+        const statusCls = item.statusCls||'ts-wait';
+        const priorityHtml = item.priority && item.priority!=='보통'
+          ? `<span class="task-priority ${item.priorityCls||'tp-normal'}">${item.priority}</span>`
+          : '';
+
+        // 마감일 색상
+        let deadlineColor = 'var(--mut)';
+        let deadlineSuffix = '';
+        if(item.deadline){
+          const dl = new Date(item.deadline);
+          const now = new Date();
+          now.setHours(0,0,0,0); dl.setHours(0,0,0,0);
+          const diff = Math.round((dl-now)/(1000*60*60*24));
+          if(diff < 0){ deadlineColor='#dc2626'; deadlineSuffix=' · 지연'; }
+          else if(diff === 0){ deadlineColor='#dc2626'; deadlineSuffix=' · 오늘'; }
+          else if(diff === 1){ deadlineColor='#ea580c'; deadlineSuffix=' · 내일'; }
+          else if(diff <= 7){ deadlineColor='#b45309'; }
+        }
+        const deadlineHtml = item.deadline
+          ? `<span class="task-deadline" style="color:${deadlineColor};font-weight:${deadlineColor!=='var(--mut)'?'600':'400'}">마감 ${item.deadline}${deadlineSuffix}</span>`
+          : '';
+
+        const assigneeHtml = item.assignee
+          ? `<span class="task-assignee-chip" onclick="applyAssigneeFilter('${item.assignee.split(' ')[0]}',event)" title="담당자 필터 적용">👤 ${item.assignee}</span>`
+          : '';
+
+        return `
+        <div class="res-item" onclick="alert('업무로 이동합니다 (프로토타입)')">
+          <div class="res-item-ico" style="background:${item.ico_bg||'#eff6ff'}">${item.icon}</div>
+          <div class="res-item-body">
+            <div class="res-item-title">${highlight(item.title||'')}</div>
+            <div class="task-meta" style="margin-bottom:4px">
+              <span class="task-status ${statusCls} task-status-clickable" onclick="applyStatusFilter('${item.status||'대기'}',event)" title="이 상태로 필터">${item.status||'대기'}</span>
+              ${priorityHtml}
+            </div>
+            <div class="res-item-meta" style="gap:6px">
+              ${assigneeHtml}
+              ${assigneeHtml&&deadlineHtml?`<span class="dot-sep">·</span>`:''}
+              ${deadlineHtml}
+              ${(assigneeHtml||deadlineHtml)&&item.project?`<span class="dot-sep">·</span>`:''}
+              ${item.project?`<span>${item.project}</span>`:''}
+            </div>
+          </div>
+        </div>`;
+      }
+
+      // 히스토리 타입 특수 렌더
+      if(item.type==='히스토리'){
+        const fromCls = {'요청':'ts-wait','대기':'ts-wait','진행':'ts-progress','완료':'ts-done','테스트':'ts-test','피드백':'ts-hold'}[item.historyFrom]||'ts-wait';
+        const toCls   = {'요청':'ts-wait','대기':'ts-wait','진행':'ts-progress','완료':'ts-done','테스트':'ts-test','피드백':'ts-hold'}[item.historyTo]||'ts-wait';
+        return `
+        <div class="history-item" onclick="alert('업무로 이동합니다 (프로토타입)')">
+          <div class="res-item-ico" style="background:#f5f3ff">${item.icon}</div>
+          <div class="res-item-body">
+            <div class="res-item-title">${item.title}</div>
+            <div class="history-line">
+              <span class="task-status ${fromCls}">${item.historyFrom}</span>
+              <span class="h-arrow">→</span>
+              <span class="task-status ${toCls}">${item.historyTo}</span>
+              <span class="h-who">${item.historyWho} · ${item.historyAt}</span>
+            </div>
+            <div class="res-item-meta"><span>${item.project}</span></div>
+          </div>
+        </div>`;
+      }
+
+      // 투표 타입 특수 렌더
+      if(item.type==='투표' && item.voteItems){
+        const barsHtml = item.voteItems.map(([l,p])=>`
+          <div class="vote-bar-row">
+            <span class="vote-bar-label">${l}</span>
+            <div class="vote-bar-bg"><div class="vote-bar-fill" style="width:${p}%"></div></div>
+            <span class="vote-bar-pct">${p}%</span>
+          </div>`).join('');
+        return `
+        <div class="res-item" onclick="alert('투표 게시물로 이동합니다 (프로토타입)')">
+          <div class="res-item-ico" style="background:#faf5ff">${item.icon}</div>
+          <div class="res-item-body">
+            <div class="res-item-title">${item.title}</div>
+            <div class="inline-vote">
+              <div class="inline-vote-title">🗳 투표 결과 · 참여 ${item.voteTotal}명</div>
+              <div class="vote-bar-wrap">${barsHtml}</div>
+            </div>
+            <div class="res-item-meta" style="margin-top:6px">
+              ${item.project?`<span>${item.project}</span><span class="dot-sep">·</span>`:''}
+              <span>${item.author}</span><span class="dot-sep">·</span><span>${item.date||''}</span>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      // 일반 렌더 — flow 실제 검색 UI 형태
+      const typeIcons = {'글':'≡','업무':'≡','일정':'📅','투표':'🗳','할일':'☑','파일':'📄','채팅':'○','프로젝트':'🗂️','위키':'📖','캘린더':'📅','히스토리':'🕐'};
+      const typeIcon = typeIcons[item.type] || '≡';
+
+      return `
+      <div class="res-item" onclick="alert('원본으로 이동합니다 (프로토타입)')">
+        <div class="res-item-ico">${typeIcon}</div>
+        <div class="res-item-body">
+          <div class="res-item-title">${highlight(item.title||'')}${matchBadge}${driveLabel}</div>
+          <div class="res-item-preview">${highlight(item.preview||'')}</div>
+          ${snippetHtml}
+          <div class="res-item-meta">
+            ${item.author?`<span>${item.author}</span><span class="pipe">|</span>`:''}
+            ${item.date?`<span>${item.date||''}</span><span class="pipe">|</span>`:''}
+            ${item.type?`<span class="type-badge">${item.type}</span>`:''}
+            ${item.project?`<span class="pipe">|</span><span>${item.project}</span>`:''}
+          </div>
+        </div>
+      </div>`;
+    }
+
+    return `
+      <div class="res-group fadeUp">
+        <div class="res-group-hd">
+          <span class="res-group-title">${title}</span>
+          <span class="res-group-cnt">${cntLabel}</span>
+          ${hasMore?`<span class="res-more">더보기 →</span>`:''}
+        </div>
+        ${items.map(item=>renderItem(item)).join('')}
+      </div>`;
+  }
+
+  let html='';
+  const br=s&&s.browse?s.browse:{};
+
+  if(curTab==='all'){
+    if(br.proj&&br.proj.length) html+=makeGroup('프로젝트',br.proj.length,br.proj);
+    if(br.post&&br.post.length) html+=makeGroup('게시물',(s&&s.stats&&s.stats.post||br.post.length),br.post,s&&s.stats&&s.stats.post>br.post.length);
+    if(br.cal&&br.cal.length)   html+=makeGroup('캘린더',(s&&s.stats&&s.stats.cal||br.cal.length),br.cal);
+    if(br.chat&&br.chat.length) html+=makeGroup('채팅',(s&&s.stats&&s.stats.chat||br.chat.length),br.chat);
+    if(br.file&&br.file.length) html+=makeGroup('파일',(s&&s.stats&&s.stats.file||br.file.length),br.file);
+    if(br.wiki&&br.wiki.length) html+=makeGroup('위키',(s&&s.stats&&s.stats.wiki||br.wiki.length),br.wiki);
+    if(!html) html=`<div style="text-align:center;padding:40px;color:var(--mut);font-size:14px">검색 결과가 없습니다</div>`;
+  } else if(curTab==='proj'){
+    html = makeGroup('프로젝트',br.proj&&br.proj.length||0,br.proj)||`<div style="text-align:center;padding:40px;color:var(--mut)">프로젝트 결과가 없습니다</div>`;
+  } else if(curTab==='post'){
+    const hasMore = s&&s.stats&&s.stats.post > (br.post&&br.post.length||0);
+    html = makeGroup('게시물',s&&s.stats&&s.stats.post||0,br.post,hasMore)||`<div style="text-align:center;padding:40px;color:var(--mut)">게시물 결과가 없습니다</div>`;
+  } else if(curTab==='chat'){
+    html = makeGroup('채팅',s&&s.stats&&s.stats.chat||0,br.chat)||`<div style="text-align:center;padding:40px;color:var(--mut)">채팅 결과가 없습니다</div>`;
+  } else if(curTab==='file'){
+    html = makeGroup('파일',s&&s.stats&&s.stats.file||0,br.file)||`<div style="text-align:center;padding:40px;color:var(--mut)">파일 결과가 없습니다</div>`;
+  } else if(curTab==='noti'){
+    const notiItems = br.noti && br.noti.length ? br.noti : [
+      {icon:'🔔',title:`"${curDisplayQ}" 관련 게시물에 댓글이 달렸습니다`,preview:'우성호님이 댓글을 남겼습니다.',project:'온트너 앱 개발 프로젝트',date:"'26.03.25"},
+      {icon:'🔔',title:`"${curDisplayQ}" 업무가 완료 처리되었습니다`,preview:'박서연님이 상태를 완료로 변경했습니다.',project:'삼성화재 프로젝트',date:"'26.03.22"},
+      {icon:'🔔',title:`"${curDisplayQ}" 파일이 업로드되었습니다`,preview:'이지현님이 새 파일을 첨부했습니다.',project:'현대자동차 프로젝트',date:"'26.03.20"},
+    ];
+    html = `
+      <div class="res-group fadeUp">
+        <div class="res-group-hd">
+          <span class="res-group-title">알림</span>
+          <span class="res-group-cnt">${notiItems.length}</span>
+        </div>
+        ${notiItems.map(n=>`
+          <div class="res-item" onclick="alert('알림으로 이동합니다 (프로토타입)')">
+            <div class="res-item-ico" style="background:#fff9c3">${n.icon}</div>
+            <div class="res-item-body">
+              <div class="res-item-title">${n.title}</div>
+              <div class="res-item-preview">${n.preview}</div>
+              <div class="res-item-meta"><span>${n.project}</span><span class="pipe">|</span><span>${n.author||''}</span><span class="pipe">|</span><span>${n.date}</span></div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+  } else {
+    html=`<div style="text-align:center;padding:40px;color:var(--mut)">해당 카테고리 결과가 없습니다</div>`;
+  }
+
+  main.innerHTML=html;
+
+  // 필터 패널
+  const filter=document.createElement('div');
+  filter.className='filter-panel';
+  filter.innerHTML=`
+    <div class="flow-ai-card" onclick="switchTab('search')">
+      <span class="flow-ai-label">flow AI</span>
+      <span class="flow-ai-arrow">→</span>
+    </div>
+    <div class="filter-box">
+      <div class="filter-hd">
+        <span class="filter-title">검색 필터</span>
+        <button class="filter-reset" onclick="resetFilters()">초기화 ↺</button>
+      </div>
+      <div class="filter-section">
+        <div class="filter-label">↕ 정렬 순서</div>
+        <div class="filter-chips" id="sortChips">
+          ${SORT_OPTS.map(o=>`<button class="f-chip ${curSort===o?'on':''}" onclick="setSort('${o}',this)">${o}</button>`).join('')}
+        </div>
+      </div>
+      <div class="filter-section">
+        <div class="filter-label">📅 검색 기간</div>
+        <div class="filter-chips" id="periodChips">
+          ${PERIOD_OPTS.map(o=>`<button class="f-chip ${curPeriod===o?'on':''}" onclick="setPeriod('${o}',this)">${o}</button>`).join('')}
+        </div>
+      </div>
+      <div class="filter-section">
+        <div class="filter-label">👤 ${curTab==='proj'?'참여자':'작성자'}</div>
+        <input class="filter-input" placeholder="${curTab==='proj'?'참여자':'작성자'} 찾기" />
+      </div>
+      ${curTab!=='proj'?`
+      <div class="filter-section">
+        <div class="filter-label">📁 프로젝트</div>
+        <input class="filter-input" placeholder="프로젝트 찾기" />
+      </div>`:''}
+      ${curTab==='post'?`
+      <div class="filter-section">
+        <div class="filter-label">📋 게시물 유형</div>
+        <div class="filter-chips" id="postTypeChips">
+          ${['전체','글','업무','일정','투표','할일'].map(t=>`<button class="f-chip ${curPostType===t?'on':''}" onclick="setPostType('${t}',this)">${t}</button>`).join('')}
+        </div>
+        <div id="subFilterArea"></div>
+      </div>`:''}
+    </div>`;
+
+  wrap.appendChild(main);
+  wrap.appendChild(filter);
+  area.appendChild(wrap);
+}
+
+function applyStatusFilter(status, e){
+  e.stopPropagation();
+  // 게시물 유형 → 업무로 전환
+  const postTypeChips = document.querySelectorAll('#postTypeChips .f-chip');
+  postTypeChips.forEach(c=>c.classList.toggle('on', c.textContent==='업무'));
+  if(document.getElementById('subFilterArea') && curPostType!=='업무'){
+    curPostType='업무';
+    renderSubFilter('업무');
+  }
+  // 해당 상태 칩 ON
+  setTimeout(()=>{
+    document.querySelectorAll('.sf-chip').forEach(c=>{
+      if(c.textContent===status) c.classList.add('on');
+    });
+    const sf = document.querySelector('.sub-filter-box');
+    if(sf) sf.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }, 50);
+}
+function applyAssigneeFilter(name, e){
+  e.stopPropagation();
+  const postTypeChips = document.querySelectorAll('#postTypeChips .f-chip');
+  postTypeChips.forEach(c=>c.classList.toggle('on', c.textContent==='업무'));
+  if(curPostType!=='업무'){
+    curPostType='업무';
+    renderSubFilter('업무');
+  }
+  // 담당자 칩 ON
+  setTimeout(()=>{
+    document.querySelectorAll('.sf-chip-person').forEach(c=>{
+      c.classList.toggle('on', c.dataset.name===name);
+    });
+    const sf = document.querySelector('.sub-filter-box');
+    if(sf) sf.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }, 50);
+}
+function setPostType(v,el){
+  curPostType=v;
+  document.querySelectorAll('#postTypeChips .f-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  renderSubFilter(v);
+}
+function renderSubFilter(type){
+  const area = document.getElementById('subFilterArea');
+  if(!area) return;
+  if(type==='업무'){
+    // 현재 검색 결과에서 담당자 추출
+    const s = SC[curQ];
+    const persons = s&&s.browse&&s.browse.post
+      ? [...new Set(s.browse.post.filter(i=>i.type==='업무'&&i.assignee).map(i=>i.assignee.split(' ')[0]))]
+      : ['우성호','박제원','서동석','신주경'];
+    const personChips = persons.map(n=>`
+      <button class="sf-chip sf-chip-person" data-name="${n}" onclick="this.classList.toggle('on');event.stopPropagation()">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#6d28d9;color:#fff;font-size:9px;font-weight:700;margin-right:4px">${n[0]}</span>${n}
+      </button>`).join('');
+    area.innerHTML=`
+      <div class="sub-filter-box">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span class="sub-filter-title" style="margin-bottom:0">⚙️ 업무 세부 필터</span>
+          <button onclick="resetSubFilter()" style="font-size:11px;color:var(--mut);background:none;border:none;cursor:pointer;font-family:inherit">초기화 ↺</button>
+        </div>
+        <div class="sub-filter-label" style="font-size:11px;color:var(--mut);margin-bottom:6px;font-weight:600">상태</div>
+        <div class="sub-filter-chips" id="sfStatusChips">
+          ${['전체','요청','진행','완료','보류','테스트'].map(s=>`<button class="sf-chip" onclick="selSfStatus('${s}',this)">${s}</button>`).join('')}
+        </div>
+        <div class="sub-filter-label" style="font-size:11px;color:var(--mut);margin:10px 0 6px;font-weight:600">담당자</div>
+        <div class="sub-filter-chips" style="gap:5px">
+          ${personChips}
+        </div>
+        <div class="sub-filter-label" style="font-size:11px;color:var(--mut);margin:10px 0 6px;font-weight:600">마감일</div>
+        <div class="sub-filter-chips" id="sfDeadlineChips">
+          ${['전체','오늘 마감','이번 주','지연됨'].map(s=>`<button class="sf-chip" onclick="selSfChip(this)">${s}</button>`).join('')}
+        </div>
+        <div class="sub-filter-label" style="font-size:11px;color:var(--mut);margin:10px 0 6px;font-weight:600">커스텀 컬럼</div>
+        <input class="sub-filter-input" placeholder="컬럼명 또는 값 입력" />
+      </div>`;
+  } else if(type==='일정'){
+    area.innerHTML=`
+      <div class="sub-filter-box">
+        <div class="sub-filter-title">📅 일정 세부 필터</div>
+        <div class="sub-filter-label" style="font-size:11px;color:var(--mut);margin-bottom:5px;font-weight:600">일정 기간</div>
+        <div class="sub-filter-chips">
+          ${['전체','오늘','이번 주','이번 달','직접설정'].map(s=>`<button class="sf-chip" onclick="selSfChip(this)">${s}</button>`).join('')}
+        </div>
+        <div class="sub-filter-label" style="font-size:11px;color:var(--mut);margin:8px 0 5px;font-weight:600">참석자</div>
+        <input class="sub-filter-input" placeholder="참석자 이름 검색" />
+      </div>`;
+  } else if(type==='투표'){
+    area.innerHTML=`
+      <div class="sub-filter-box">
+        <div class="sub-filter-title">🗳 투표 결과 조회</div>
+        <div style="font-size:12px;color:var(--sub);margin-bottom:10px">투표 항목별 득표율을 확인합니다</div>
+        <div class="vote-bar-wrap">
+          ${[['찬성',72],['반대',18],['보류',10]].map(([l,p])=>`
+            <div class="vote-bar-row">
+              <span class="vote-bar-label">${l}</span>
+              <div class="vote-bar-bg"><div class="vote-bar-fill" style="width:${p}%"></div></div>
+              <span class="vote-bar-pct">${p}%</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  } else if(type==='할일'){
+    area.innerHTML=`
+      <div class="sub-filter-box">
+        <div class="sub-filter-title">✅ 할일 필터</div>
+        <div class="sub-filter-chips">
+          ${['전체','미완료','완료','내 할일'].map(s=>`<button class="sf-chip" onclick="selSfChip(this)">${s}</button>`).join('')}
+        </div>
+      </div>`;
+  } else {
+    area.innerHTML='';
+  }
+}
+function selSfStatus(v,el){
+  document.querySelectorAll('#sfStatusChips .sf-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+}
+function resetSubFilter(){
+  document.querySelectorAll('.sub-filter-box .sf-chip').forEach(c=>c.classList.remove('on'));
+  document.querySelectorAll('.sub-filter-box .sub-filter-input').forEach(i=>i.value='');
+}
+function selSfChip(el){
+  // 같은 sub-filter-chips 내 단일 선택
+  el.closest('.sub-filter-chips').querySelectorAll('.sf-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+}
+function toggleTaskStatus(v,el){
+  el.classList.toggle('on');
+}
+function setSort(v,el){
+  curSort=v;
+  document.querySelectorAll('#sortChips .f-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+}
+function setPeriod(v,el){
+  curPeriod=v;
+  document.querySelectorAll('#periodChips .f-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+}
+function resetFilters(){
+  curSort='관련도순'; curPeriod='전체'; curPostType='전체';
+  document.querySelectorAll('#sortChips .f-chip').forEach(c=>c.classList.toggle('on',c.textContent==='관련도순'));
+  document.querySelectorAll('#periodChips .f-chip').forEach(c=>c.classList.toggle('on',c.textContent==='전체'));
+  document.querySelectorAll('#postTypeChips .f-chip').forEach(c=>c.classList.toggle('on',c.textContent==='전체'));
+  const sa=document.getElementById('subFilterArea'); if(sa) sa.innerHTML='';
+  document.querySelectorAll('.filter-input').forEach(i=>i.value='');
+}
+
+// ═══════════════════════════════════════════ HELPERS
+function togProg(){
+  const sc=document.getElementById('stepsC');
+  const tog=document.getElementById('pTog');
+  if(!sc||!tog) return;
+  const open=sc.style.display!=='none';
+  sc.style.display=open?'none':'flex';
+  tog.textContent=open?'∨':'∧';
+}
+function cpSum(){
+  const el=document.getElementById('sumArea');
+  if(el) navigator.clipboard.writeText(el.innerText).then(()=>alert('복사되었습니다.')).catch(()=>alert('복사 완료'));
+}
+function finDot(){const d=document.querySelectorAll('.dot');if(d.length)d[d.length-1].className='dot d-done';}
+function addStep(title,desc,groups,state){
+  const c=document.getElementById('stepsC');if(!c)return;
+  const el=document.createElement('div');el.className='step fi';
+  const dc=state==='done'?'dot d-done':state==='spin'?'dot d-spin':'dot d-wait';
+  const gh=groups.map(g=>`${g.lbl?`<div class="fr"><span>${g.lbl==='검색 키워드'?'🔍':'≡'}</span> ${g.lbl}</div>`:''}<div class="chips">${g.chips.map(ch=>`<span class="chip ${ch.c}">${ch.t}</span>`).join('')}</div>`).join('');
+  el.innerHTML=`<div class="${dc}"></div><div class="sc"><div class="st">${title}</div>${desc?`<div class="sd">${desc}</div>`:''}${gh}</div>`;
+  c.appendChild(el);
+}
+function renderSum(text){
+  const a=document.getElementById('sumArea');if(!a)return;
+  a.style.display='block';
+  let icIdx=0;
+  const html=text.split('\n').map(l=>{
+    if(!l.trim()) return '<br>';
+    // <ic> 태그를 문장 텍스트와 분리
+    const icPattern=/<ic>(.*?)<\/ic>/g;
+    let chips=[];
+    let sentenceText = l.replace(icPattern,(_, content)=>{
+      const idx=icIdx++;
+      chips.push(`<span class="ic" data-src="${idx}" onclick="matchSrc(${idx},this)">${content}</span>`);
+      return ''; // 문장에서 ic 제거
+    }).trim();
+    // 문장 끝 마침표 정리
+    sentenceText = sentenceText.replace(/\.\s*$/, '') + (sentenceText.match(/\.$/) ? '' : '');
+    const chipsHtml = chips.join(' ');
+    return `<p><span class="line-inner">${sentenceText}</span>${chipsHtml ? ' '+chipsHtml : ''}</p>`;
+  }).join('');
+  a.innerHTML=`<div class="sumbody fi">${html}</div>`;
+}
+function matchSrc(idx, chip){
+  document.querySelectorAll('.ic').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.line-inner').forEach(s=>s.classList.remove('line-highlight'));
+  document.querySelectorAll('.src-card').forEach(c=>c.classList.remove('matched'));
+
+  chip.classList.add('active');
+
+  const parentP = chip.closest('p');
+  if(parentP){
+    const lineInner = parentP.querySelector('.line-inner');
+    if(lineInner) lineInner.classList.add('line-highlight');
+  }
+
+  const cards = document.querySelectorAll('#srcC .src-card');
+  const target = cards[idx];
+  if(target){
+    target.classList.add('matched');
+    target.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+}
+
+function matchFromCard(idx, card){
+  // 모든 선택 초기화
+  document.querySelectorAll('.ic').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.line-inner').forEach(s=>s.classList.remove('line-highlight'));
+  document.querySelectorAll('.src-card').forEach(c=>c.classList.remove('matched'));
+
+  // 카드 하이라이트
+  card.classList.add('matched');
+
+  // 대응하는 좌측 ic 칩 찾기 (data-src === idx)
+  const chip = document.querySelector(`.ic[data-src="${idx}"]`);
+  if(chip){
+    chip.classList.add('active');
+    const parentP = chip.closest('p');
+    if(parentP){
+      const lineInner = parentP.querySelector('.line-inner');
+      if(lineInner){
+        lineInner.classList.add('line-highlight');
+        lineInner.scrollIntoView({behavior:'smooth', block:'nearest'});
+      }
+    }
+  }
+}
+
+function renderSrcs(srcs){
+  const hd=document.getElementById('srcHd');
+  const ct=document.getElementById('srcC');
+  if(!hd||!ct) return;
+  hd.textContent=`출처 (${srcs.length})`;
+  if(!srcs.length){ct.innerHTML='<div class="src-empty"><div style="font-size:32px;opacity:.25;margin-bottom:7px">📄</div><div style="font-size:12.5px;color:var(--mut)">검색 결과가 표시됩니다</div></div>';return;}
+  ct.innerHTML=srcs.map((s,i)=>{
+    // 업무 타입 전용 카드
+    if(s.lbl==='업무' && s.status){
+      let dlColor='var(--mut)', dlSuffix='';
+      if(s.deadline){
+        const dl=new Date(s.deadline), now=new Date();
+        now.setHours(0,0,0,0); dl.setHours(0,0,0,0);
+        const diff=Math.round((dl-now)/(1000*60*60*24));
+        if(diff<0){dlColor='#dc2626';dlSuffix=' · 지연';}
+        else if(diff===0){dlColor='#dc2626';dlSuffix=' · 오늘';}
+        else if(diff===1){dlColor='#ea580c';dlSuffix=' · 내일';}
+        else if(diff<=7){dlColor='#b45309';}
+      }
+      const dlHtml = s.deadline
+        ? `<span style="font-size:11.5px;color:${dlColor};font-weight:${dlColor!=='var(--mut)'?'600':'400'}">마감 ${s.deadline}${dlSuffix}</span>`
+        : '';
+      const sBg={'ts-done':'#f3f4f6','ts-progress':'#dcfce7','ts-test':'#fef3c7','ts-wait':'#eff6ff','ts-hold':'#fdf2f8'};
+      const sFg={'ts-done':'#6b7280','ts-progress':'#16a34a','ts-test':'#92400e','ts-wait':'#2563eb','ts-hold':'#9d174d'};
+      const sCls=s.statusCls||'ts-wait';
+      return `
+      <div class="src-card fi" data-idx="${i}" onclick="matchFromCard(${i},this)">
+        <div class="src-meta">
+          <span style="font-size:13px">${s.icon}</span>
+          <span class="src-badge ${s.cls}">${s.lbl}</span>
+          <span class="src-proj">${s.proj}</span>
+          <span class="src-date">${s.date}</span>
+        </div>
+        <div class="src-title">${s.title}</div>
+        <div style="display:flex;align-items:center;gap:7px;margin-top:7px;flex-wrap:wrap">
+          <span style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:10px;background:${sBg[sCls]||'#f3f4f6'};color:${sFg[sCls]||'#6b7280'}">● ${s.status}</span>
+          ${s.assignee?`<span style="font-size:11.5px;color:var(--sub)">👤 ${s.assignee}</span>`:''}
+          ${dlHtml}
+        </div>
+        <div class="src-dest d-int" style="margin-top:8px"> → ${s.dest}</div>
+      </div>`;
+    }
+    // 기본 카드
+    return `
+    <div class="src-card fi ${s.ext?'ext':''}" data-idx="${i}" onclick="matchFromCard(${i},this)">
+      <div class="src-meta">
+        <span style="font-size:13px">${s.icon}</span>
+        <span class="src-badge ${s.cls}">${s.lbl}</span>
+        <span class="src-proj">${s.proj}</span>
+        <span class="src-date">${s.date}</span>
+      </div>
+      <div class="src-title">${s.title}</div>
+      <div class="src-prev">${s.prev||''}</div>
+      <div class="src-author">${s.author}</div>
+      <div class="src-dest ${s.ext?'d-ext':'d-int'}">${s.ext?'✦':' →'} ${s.dest}</div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
