@@ -718,8 +718,12 @@ body{font-family:'Pretendard',sans-serif;background:var(--bg);color:var(--txt);m
                   <div id="faiPlusDd" style="display:none;position:absolute;bottom:calc(100% + 8px);left:0;background:#fff;border:1px solid #e8eaed;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);padding:6px;min-width:210px;z-index:200">
                     <div class="fai-dd-item">📎 파일 업로드 <span style="margin-left:auto;color:#9da8ba;font-size:12px">ⓘ</span></div>
                     <div class="fai-dd-item">📄 최근 파일 <span style="margin-left:auto;color:#9da8ba;font-size:12px">›</span></div>
-                    <div class="src-section">
-                      <div class="src-section-title">출처</div>
+                    <div class="fai-dd-item" onclick="toggleSrcPanel(event)" id="srcMenuBtn" style="position:relative">
+                      ✦ 출처 <span style="margin-left:auto;color:#9da8ba;font-size:12px">›</span>
+                    </div>
+                    <!-- 출처 서브패널 -->
+                    <div id="srcSubPanel" style="display:none;position:absolute;left:calc(100% + 4px);bottom:0;background:#fff;border:1px solid #e8eaed;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);padding:6px;min-width:200px;z-index:201">
+                      <div style="font-size:11px;font-weight:700;color:#9da8ba;padding:6px 10px 4px;letter-spacing:.4px">출처</div>
                       <div class="src-item" onclick="toggleSrc('flow')"><span class="src-icon" style="background:#ede9fe">⚡</span> 플로우<span class="src-cb" id="srcCb_flow"></span></div>
                       <div class="src-item" onclick="toggleSrc('wiki')"><span class="src-icon" style="background:#dbeafe">📖</span> 위키<span class="src-cb" id="srcCb_wiki"></span></div>
                       <div class="src-item" onclick="toggleSrc('cal')"><span class="src-icon" style="background:#fef3c7">📅</span> 캘린더<span class="src-cb" id="srcCb_cal"></span></div>
@@ -901,6 +905,7 @@ function toggleFaiDropdown(id){
     const el = document.getElementById(d);
     if(el) el.style.display='none';
   });
+  const sp = document.getElementById('srcSubPanel'); if(sp) sp.style.display='none';
   if(!isOpen) dd.style.display='block';
 }
 function setFaiFunc(func){
@@ -929,12 +934,19 @@ function setFaiFunc(func){
 }
 // 외부 클릭 시 드롭다운 닫기
 document.addEventListener('click', e=>{
-  if(!e.target.closest('#faiPlusBtn') && !e.target.closest('#faiPlusDd') && !e.target.closest('#srcPills'))
-    { const d = document.getElementById('faiPlusDd'); if(d) d.style.display='none'; }
+  if(!e.target.closest('#faiPlusBtn') && !e.target.closest('#faiPlusDd') && !e.target.closest('#srcPills') && !e.target.closest('#srcSubPanel'))
+    { const d = document.getElementById('faiPlusDd'); if(d) d.style.display='none';
+      const sp = document.getElementById('srcSubPanel'); if(sp) sp.style.display='none'; }
   if(!e.target.closest('#faiFuncBtn') && !e.target.closest('#faiFuncDd'))
     { const d = document.getElementById('faiFuncDd'); if(d) d.style.display='none'; }
 });
 
+function toggleSrcPanel(e){
+  e.stopPropagation();
+  const panel = document.getElementById('srcSubPanel');
+  if(!panel) return;
+  panel.style.display = panel.style.display==='none' ? 'block' : 'none';
+}
 // ── 출처 토글/렌더
 function toggleSrc(id){
   srcOn[id] = !srcOn[id];
@@ -959,7 +971,11 @@ function renderSrcPills(){
   el.innerHTML = show.map((s,i)=>
     `<div style="width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;border:1.5px solid #fff;background:#ede9fe;margin-left:${i>0?'-4px':'0'};position:relative;z-index:${show.length-i}">${s.icon}</div>`
   ).join('') + `<span style="font-size:12px;font-weight:600;color:#6d28d9;margin-left:6px;white-space:nowrap">출처 ${active.length}</span>`;
-  el.onclick = function(e){ e.stopPropagation(); toggleFaiDropdown('faiPlusDd'); };
+  el.onclick = function(e){ 
+    e.stopPropagation(); 
+    toggleFaiDropdown('faiPlusDd');
+    const sp = document.getElementById('srcSubPanel'); if(sp) sp.style.display='block';
+  };
 }
 function toggleSrcTab(srcId){
   srcOn[srcId] = !srcOn[srcId];
