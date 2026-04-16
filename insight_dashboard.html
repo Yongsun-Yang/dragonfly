@@ -1,0 +1,3813 @@
+ <!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>flow AI · 인사이트 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{
+  --bg:#0E0E10;--bg2:#17171A;--bg3:#1F1F24;--bg4:#27272D;
+  --bd:#2E2E36;--bd2:#3A3A44;
+  --txt:#F0EFF5;--txt2:#9896A8;--txt3:#5E5C6E;
+  --acc:#7B5FFF;--acc2:#9B82FF;
+  --acc-bg:rgba(123,95,255,0.13);--acc-bg2:rgba(123,95,255,0.06);
+  --green:#43C59E;--orange:#D85A30;--yellow:#E8A838;--red:#E05252;--blue:#378ADD;
+  --r:10px;--r2:14px;--r3:18px;
+  --fs:14px;
+}
+body.light{
+  --bg:#F2F2F5;--bg2:#FFFFFF;--bg3:#F5F5F8;--bg4:#EBEBEF;
+  --bd:#E2E2E8;--bd2:#D0D0D8;
+  --txt:#1A1A2E;--txt2:#5A5A72;--txt3:#9898B0;
+  --acc:#7B5FFF;--acc2:#6548E8;
+  --acc-bg:rgba(123,95,255,0.10);--acc-bg2:rgba(123,95,255,0.05);
+}
+body.light .upload-zone{border-color:#C8C8D8;}
+body.light .upload-zone:hover,body.light .upload-zone.drag{border-color:var(--acc);}
+body.light .prog-bar{background:#E0E0EA;}
+body.light .bar-bg{background:#E0E0EA;}
+body.light #toast{box-shadow:0 4px 16px rgba(0,0,0,0.12);}
+body.light .modal{box-shadow:0 8px 32px rgba(0,0,0,0.15);}
+body.light .lnb{box-shadow:1px 0 0 var(--bd);}
+body.light .insight{background:rgba(123,95,255,0.06);border-color:rgba(123,95,255,0.18);}
+body.light .welcome-banner{background:rgba(123,95,255,0.06);border-color:rgba(123,95,255,0.18);}
+/* 토글 버튼 */
+.theme-toggle{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:var(--r);
+  background:var(--bg3);border:1px solid var(--bd);cursor:pointer;transition:all 0.15s;
+  font-size:12px;color:var(--txt2);user-select:none;flex-shrink:0;}
+.theme-toggle:hover{background:var(--bg4);color:var(--txt);}
+.toggle-track{width:28px;height:16px;border-radius:8px;background:var(--bd2);
+  position:relative;transition:background 0.2s;flex-shrink:0;}
+.toggle-track.on{background:var(--acc);}
+.toggle-thumb{width:12px;height:12px;border-radius:50%;background:#fff;
+  position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+.toggle-track.on .toggle-thumb{left:14px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--txt);height:100vh;display:flex;overflow:hidden;font-size:var(--fs);}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(14px);
+  background:var(--bg3);border:1px solid var(--bd2);border-radius:var(--r2);
+  padding:12px 22px;font-size:13px;color:var(--txt);box-shadow:0 8px 28px rgba(0,0,0,0.55);
+  z-index:999;opacity:0;transition:all 0.25s;pointer-events:none;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── LNB ── */
+.lnb{width:230px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;}
+.lnb-logo{padding:20px 18px 16px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--bd);}
+.logo-mark{width:32px;height:32px;background:var(--acc);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;}
+.logo-text{font-size:15px;font-weight:700;color:var(--txt);letter-spacing:-0.3px;}
+.logo-badge{font-size:9px;font-weight:700;background:var(--acc);color:#fff;padding:2px 6px;border-radius:4px;}
+.lnb-sec{padding:14px 10px 6px;}
+.lnb-sec-lbl{font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:0.08em;padding:0 10px;margin-bottom:5px;}
+.lnb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r);cursor:pointer;transition:background 0.15s;color:var(--txt2);font-size:13px;margin-bottom:2px;}
+.lnb-item:hover{background:var(--bg3);color:var(--txt);}
+.lnb-item.active{background:var(--acc-bg);color:var(--acc2);}
+.lnb-ic{font-size:15px;width:20px;text-align:center;flex-shrink:0;}
+.lnb-new{margin-left:auto;font-size:9px;font-weight:700;background:var(--acc);color:#fff;padding:2px 7px;border-radius:10px;}
+.lnb-recent{font-size:12px;padding:7px 12px 7px 16px;border-radius:var(--r);cursor:pointer;color:var(--txt3);
+  transition:all 0.15s;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  display:flex;align-items:center;gap:7px;margin-bottom:2px;}
+.lnb-recent:hover{background:var(--bg3);color:var(--txt2);}
+.lnb-recent.active{color:var(--acc2);}
+.lnb-divider{height:1px;background:var(--bd);margin:10px 14px;}
+.lnb-footer{margin-top:auto;padding:12px 10px;border-top:1px solid var(--bd);}
+
+/* 글자 크기 컨트롤 */
+.font-ctrl{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);
+  padding:10px 14px;margin-bottom:10px;}
+.font-ctrl-title{font-size:11px;color:var(--txt3);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+.font-ctrl-title span{font-size:13px;}
+.font-btns{display:flex;gap:5px;}
+.font-btn{flex:1;padding:7px 0;border-radius:7px;background:var(--bg4);border:1px solid var(--bd);
+  color:var(--txt2);cursor:pointer;font-size:12px;font-weight:600;text-align:center;transition:all 0.15s;}
+.font-btn:hover{background:var(--bd2);color:var(--txt);}
+.font-btn.active-fs{background:var(--acc-bg);border-color:var(--acc);color:var(--acc2);}
+
+.lnb-user{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);cursor:pointer;}
+.lnb-user:hover{background:var(--bg3);}
+.user-av{width:30px;height:30px;background:linear-gradient(135deg,var(--acc),#B490FF);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+.user-info{display:flex;flex-direction:column;gap:1px;}
+.user-name{font-size:12.5px;color:var(--txt);}
+.user-role{font-size:10.5px;color:var(--txt3);}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{height:54px;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 22px;gap:12px;}
+.tb-title{font-size:15px;font-weight:700;color:var(--txt);letter-spacing:-0.3px;}
+.tb-sub{font-size:12px;color:var(--txt3);}
+.tb-sp{flex:1;}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;line-height:1;}
+.btn-g{background:var(--bg3);color:var(--txt2);border:1px solid var(--bd);}
+.btn-g:hover{background:var(--bg4);color:var(--txt);}
+.btn-p{background:var(--acc);color:#fff;}
+.btn-p:hover{filter:brightness(1.1);}
+
+/* ── VIEWS ── */
+.view{display:none;flex:1;overflow:hidden;}
+.view.active{display:flex;}
+
+/* ── EMPTY ── */
+#view-empty{flex-direction:column;overflow-y:auto;padding:36px 28px;}
+.empty-inner{max-width:860px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:24px;}
+
+/* 환영 배너 */
+.welcome-banner{background:linear-gradient(135deg,rgba(123,95,255,0.12),rgba(123,95,255,0.04));
+  border:1px solid rgba(123,95,255,0.2);border-radius:var(--r3);padding:22px 24px;
+  display:flex;gap:16px;align-items:flex-start;}
+.wb-ic{font-size:28px;flex-shrink:0;}
+.wb-title{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:5px;}
+.wb-desc{font-size:13px;color:var(--txt2);line-height:1.7;}
+.wb-steps{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
+.wb-step{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--txt2);}
+.wb-step-num{width:26px;height:26px;border-radius:50%;background:var(--acc-bg);
+  border:1.5px solid rgba(123,95,255,0.4);color:var(--acc2);font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.wb-arrow{color:var(--acc2);font-size:16px;line-height:1;opacity:0.6;}
+
+/* 업로드 존 */
+.upload-zone{width:100%;padding:36px 32px;border:2px dashed var(--bd2);border-radius:var(--r3);
+  background:var(--bg2);display:flex;flex-direction:column;align-items:center;gap:12px;
+  cursor:pointer;transition:all 0.22s;position:relative;}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--acc);background:var(--acc-bg2);}
+.upload-zone.drag{border-color:var(--acc);background:var(--acc-bg);}
+.upload-input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.upload-ic{display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
+.upload-title{font-size:16px;font-weight:700;color:var(--txt);}
+.upload-desc{font-size:13px;color:var(--txt2);text-align:center;line-height:1.7;}
+.upload-hint{font-size:11.5px;color:var(--txt3);background:var(--bg3);border:1px solid var(--bd);
+  border-radius:20px;padding:4px 12px;}
+.type-chips{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;}
+.type-chip{font-size:12px;font-weight:500;padding:4px 11px;border-radius:20px;border:1px solid var(--bd2);color:var(--txt3);background:var(--bg3);}
+
+.or-row{display:flex;align-items:center;gap:14px;}
+.or-line{flex:1;height:1px;background:var(--bd);}
+.or-txt{font-size:12px;color:var(--txt3);white-space:nowrap;}
+
+/* 샘플 템플릿 */
+.tmpl-label{font-size:13px;font-weight:600;color:var(--txt2);}
+.tmpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.tmpl-card{background:var(--bg2);border:1.5px solid var(--bd);border-radius:var(--r2);
+  padding:16px 18px;cursor:pointer;transition:all 0.15s;position:relative;}
+.tmpl-card:hover{border-color:var(--acc);background:var(--bg3);transform:translateY(-1px);}
+.tmpl-ic{font-size:22px;margin-bottom:9px;}
+.tmpl-title{font-size:13px;font-weight:700;color:var(--txt);margin-bottom:4px;}
+.tmpl-desc{font-size:12px;color:var(--txt3);line-height:1.55;}
+.tmpl-badge{position:absolute;top:12px;right:12px;font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:10px;background:rgba(67,197,158,0.15);color:var(--green);}
+
+/* ── ANALYZING ── */
+#view-analyzing{flex-direction:column;align-items:center;justify-content:center;gap:0;}
+.an-wrap{width:500px;display:flex;flex-direction:column;gap:20px;}
+.an-header{text-align:center;padding-bottom:4px;}
+.an-title{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:5px;}
+.an-desc{font-size:13px;color:var(--txt3);}
+.an-card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r3);padding:28px 30px;display:flex;flex-direction:column;gap:20px;}
+.an-file{display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:12px 16px;}
+.an-file-ic{font-size:22px;}
+.an-file-name{font-size:13px;font-weight:600;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:290px;}
+.an-file-type{font-size:11.5px;color:var(--txt3);margin-top:2px;}
+.an-check{margin-left:auto;font-size:18px;color:var(--green);}
+
+.steps{display:flex;flex-direction:column;gap:0;}
+.step{display:flex;align-items:flex-start;gap:14px;padding:13px 0;border-bottom:1px solid var(--bd);}
+.step:last-child{border-bottom:none;}
+.step-dot{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:1px;}
+.sd-done{background:rgba(67,197,158,0.15);color:var(--green);}
+.sd-run{background:var(--acc-bg);color:var(--acc2);animation:pulse 1.4s ease-in-out infinite;}
+.sd-wait{background:var(--bg3);color:var(--txt3);}
+.step-lbl{font-size:13.5px;font-weight:600;color:var(--txt);}
+.step-sub{font-size:12px;color:var(--txt3);margin-top:3px;line-height:1.5;}
+.step-badge{margin-left:auto;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
+.sb-done{background:rgba(67,197,158,0.15);color:var(--green);}
+.sb-run{background:var(--acc-bg);color:var(--acc2);}
+.sb-wait{background:var(--bg3);color:var(--txt3);}
+
+.prog-wrap{display:flex;flex-direction:column;gap:6px;}
+.prog-row{display:flex;justify-content:space-between;}
+.prog-label{font-size:12px;color:var(--txt3);}
+.prog-pct{font-size:12px;color:var(--acc2);font-weight:600;}
+.prog-bar{height:4px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:3px;transition:width 0.55s ease;}
+
+.an-tip{background:var(--bg3);border-radius:var(--r);padding:12px 16px;display:flex;gap:10px;align-items:flex-start;}
+.an-tip-ic{font-size:15px;flex-shrink:0;}
+.an-tip-txt{font-size:12px;color:var(--txt2);line-height:1.6;}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes typing{0%,60%,100%{opacity:0.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+/* ── DASHBOARD ── */
+#view-dashboard{flex-direction:row;}
+.db-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.db-toolbar{padding:11px 18px;background:var(--bg2);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:9px;flex-shrink:0;flex-wrap:wrap;overflow:visible;}
+.db-src{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--bd);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--txt2);max-width:220px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.db-dot{width:7px;height:7px;background:var(--green);border-radius:50%;flex-shrink:0;}
+.db-tabs{display:flex;gap:2px;background:var(--bg3);border-radius:var(--r);padding:3px;}
+.db-tab{padding:6px 13px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--txt2);transition:all 0.15s;white-space:nowrap;}
+.db-tab.active{background:var(--bg);color:var(--txt);font-weight:600;}
+.db-scroll{flex:1;overflow-y:auto;padding:18px;}
+.db-scroll::-webkit-scrollbar{width:5px;}
+.db-scroll::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px;}
+
+/* KPI */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:15px;}
+.kpi{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r2);padding:16px 18px;}
+.kpi-lbl{font-size:11px;color:var(--txt3);margin-bottom:6px;font-weight:600;letter-spacing:0.01em;display:flex;align-items:center;gap:4px;}
+.kpi-val{font-size:24px;font-weight:700;color:var(--txt);letter-spacing:-0.5px;line-height:1;}
+.kpi-unit{font-size:14px;font-weight:500;color:var(--txt2);}
+.kpi-sub{font-size:11.5px;color:var(--txt3);margin-top:5px;}
+.help-ic{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+  border-radius:50%;background:var(--bg3);border:1px solid var(--bd2);font-size:9px;color:var(--txt3);
+  cursor:help;flex-shrink:0;}
+.help-ic:hover{border-color:var(--acc);color:var(--acc2);}
+
+/* INSIGHT */
+.insight{background:linear-gradient(135deg,rgba(123,95,255,0.09),rgba(123,95,255,0.02));
+  border:1px solid rgba(123,95,255,0.2);border-radius:var(--r2);padding:17px 20px;
+  margin-bottom:14px;display:flex;gap:14px;}
+.insight-ic{font-size:19px;flex-shrink:0;margin-top:2px;}
+.insight-lbl{font-size:10px;font-weight:800;color:var(--acc2);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:5px;}
+.insight-txt{font-size:13.5px;color:var(--txt);line-height:1.72;}
+.i-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+.i-chip{font-size:12px;padding:5px 12px;border-radius:20px;background:var(--acc-bg);color:var(--acc2);
+  cursor:pointer;border:1px solid rgba(123,95,255,0.2);transition:all 0.15s;}
+.i-chip:hover{background:rgba(123,95,255,0.22);}
+
+/* CARD */
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r2);padding:17px 19px;}
+.card-title{font-size:13.5px;font-weight:700;color:var(--txt);margin-bottom:3px;}
+.card-sub{font-size:11.5px;color:var(--txt3);margin-bottom:13px;}
+.g2{display:grid;grid-template-columns:1fr 290px;gap:12px;margin-bottom:12px;}
+.g2eq{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:12px;}
+.leg-row{display:flex;flex-wrap:wrap;gap:8px 13px;margin-bottom:12px;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--txt2);}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+.tbl th{font-size:10.5px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:0.05em;padding:0 8px 10px;text-align:left;border-bottom:1px solid var(--bd);}
+.tbl th.r{text-align:right;}
+.tbl td{padding:8px 8px;border-bottom:1px solid var(--bd);color:var(--txt);vertical-align:middle;}
+.tbl td.r{text-align:right;font-variant-numeric:tabular-nums;color:var(--txt2);}
+.tbl tr:last-child td{border-bottom:none;}
+.rk{font-size:11.5px;color:var(--txt3);}
+.bar-bg{background:var(--bg3);border-radius:2px;height:3px;margin-top:4px;}
+.bar-fill{height:3px;border-radius:2px;}
+
+/* STAT */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:13px;}
+.stat{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r2);padding:15px 17px;}
+.stat-lbl{font-size:11px;color:var(--txt3);margin-bottom:5px;font-weight:600;}
+.stat-val{font-size:21px;font-weight:700;color:var(--txt);letter-spacing:-0.5px;}
+.stat-chg{font-size:11.5px;margin-top:4px;}
+.up{color:var(--green);}.dn{color:var(--red);}
+
+/* ── QA PANEL ── */
+.qa{width:300px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--bd);display:flex;flex-direction:column;}
+.qa-hdr{padding:15px 15px 12px;border-bottom:1px solid var(--bd);}
+.qa-title{font-size:13.5px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:7px;margin-bottom:3px;}
+.qa-badge{font-size:9.5px;font-weight:700;background:var(--acc);color:#fff;padding:2px 7px;border-radius:10px;}
+.qa-desc{font-size:12px;color:var(--txt3);line-height:1.6;}
+
+.qa-body{flex:1;overflow-y:auto;padding:13px;display:flex;flex-direction:column;gap:9px;}
+.qa-body::-webkit-scrollbar{width:4px;}
+.qa-body::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px;}
+.qa-chips-lbl{font-size:10.5px;color:var(--txt3);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:5px;}
+.qa-chips{display:flex;flex-direction:column;gap:5px;}
+.qa-chip{background:var(--bg3);border:1.5px solid var(--bd);border-radius:var(--r);
+  padding:10px 13px;font-size:12.5px;color:var(--txt2);cursor:pointer;transition:all 0.15s;line-height:1.45;}
+.qa-chip:hover{border-color:var(--acc);color:var(--acc2);background:var(--acc-bg2);}
+.qa-msg{padding:10px 13px;border-radius:var(--r);font-size:12.5px;line-height:1.7;}
+.qa-msg.u{background:var(--acc-bg);color:var(--acc2);align-self:flex-end;max-width:94%;}
+.qa-msg.a{background:var(--bg3);color:var(--txt);border:1px solid var(--bd);}
+.qa-msg.a strong{color:var(--acc2);}
+.typing-dots{display:flex;gap:5px;padding:3px 0;}
+.typing-dots span{width:6px;height:6px;background:var(--txt3);border-radius:50%;animation:typing 1.2s ease-in-out infinite;}
+.typing-dots span:nth-child(2){animation-delay:.2s;}
+.typing-dots span:nth-child(3){animation-delay:.4s;}
+.qa-foot{padding:12px 13px;border-top:1px solid var(--bd);}
+.qa-inp-box{display:flex;gap:8px;align-items:center;background:var(--bg3);border:1.5px solid var(--bd);border-radius:var(--r);padding:9px 13px;transition:border-color 0.15s;}
+.qa-inp-box:focus-within{border-color:var(--acc);}
+.qa-inp{flex:1;background:none;border:none;outline:none;font-size:13px;color:var(--txt);}
+.qa-inp::placeholder{color:var(--txt3);}
+.qa-send{font-size:17px;cursor:pointer;color:var(--txt3);transition:color 0.15s;user-select:none;}
+.qa-send:hover{color:var(--acc2);}
+.qa-hint{font-size:11px;color:var(--txt3);text-align:center;margin-top:7px;}
+
+/* ── EXPORT MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.2s;}
+.overlay.open{opacity:1;pointer-events:all;}
+.modal{width:520px;background:var(--bg2);border:1px solid var(--bd2);border-radius:var(--r3);padding:28px;transform:translateY(10px);transition:transform 0.2s;}
+.overlay.open .modal{transform:translateY(0);}
+.m-title{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:4px;}
+.m-sub{font-size:13px;color:var(--txt3);margin-bottom:18px;}
+.exp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:18px;}
+.exp-opt{background:var(--bg3);border:1.5px solid var(--bd);border-radius:var(--r2);padding:15px 16px;cursor:pointer;transition:all 0.15s;}
+.exp-opt:hover{border-color:var(--bd2);}
+.exp-opt.sel{border-color:var(--acc);background:var(--acc-bg);}
+.exp-ic{font-size:22px;margin-bottom:8px;}
+.exp-title{font-size:13px;font-weight:700;color:var(--txt);margin-bottom:3px;}
+.exp-desc{font-size:11.5px;color:var(--txt3);line-height:1.5;}
+.m-foot{display:flex;justify-content:flex-end;gap:9px;padding-top:16px;border-top:1px solid var(--bd);}
+
+/* TAB */
+.tab-c{display:none;}.tab-c.active{display:block;}
+
+/* ── TEMPLATE LIBRARY ── */
+.lib-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.lib-title{font-size:13px;font-weight:700;color:var(--txt2);}
+.lib-count{font-size:11.5px;color:var(--txt3);margin-left:6px;}
+.lib-cats{display:flex;gap:4px;flex-wrap:wrap;}
+.lib-cat{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;
+  border:1px solid var(--bd);color:var(--txt3);background:var(--bg3);transition:all 0.15s;white-space:nowrap;}
+.lib-cat:hover{border-color:var(--bd2);color:var(--txt2);}
+.lib-cat.active{background:var(--acc-bg);border-color:var(--acc);color:var(--acc2);}
+.lib-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
+.lib-card{background:var(--bg2);border:1.5px solid var(--bd);border-radius:var(--r2);
+  padding:14px 15px;cursor:pointer;transition:all 0.15s;position:relative;display:flex;flex-direction:column;gap:8px;}
+.lib-card:hover{border-color:var(--acc);background:var(--bg3);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,0.3);}
+.lib-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;}
+.lib-ic{font-size:20px;flex-shrink:0;}
+.lib-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;white-space:nowrap;flex-shrink:0;margin-top:2px;}
+.badge-hot{background:rgba(216,90,48,0.15);color:var(--orange);}
+.badge-new{background:rgba(67,197,158,0.15);color:var(--green);}
+.badge-pop{background:var(--acc-bg);color:var(--acc2);}
+.lib-title-txt{font-size:12.5px;font-weight:700;color:var(--txt);line-height:1.35;}
+.lib-desc{font-size:11.5px;color:var(--txt3);line-height:1.5;}
+.lib-meta{display:flex;align-items:center;gap:6px;margin-top:2px;}
+.lib-fmt{font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px;background:var(--bg3);
+  border:1px solid var(--bd);color:var(--txt3);}
+.lib-card[data-cat].hidden{display:none;}
+
+/* UPLOAD MODE TOGGLE */
+.upload-mode{display:flex;gap:6px;margin-bottom:4px;}
+.up-mode-btn{flex:1;padding:8px 12px;border-radius:var(--r);border:1.5px solid var(--bd);
+  background:var(--bg3);color:var(--txt2);font-size:12px;font-weight:500;cursor:pointer;
+  text-align:center;transition:all 0.15s;line-height:1.4;}
+.up-mode-btn:hover{border-color:var(--bd2);color:var(--txt);}
+.up-mode-btn.active{border-color:var(--acc);background:var(--acc-bg);color:var(--acc2);}
+.up-mode-desc{font-size:11.5px;color:var(--txt3);text-align:center;}
+.multi-file-list{width:100%;display:flex;flex-direction:column;gap:5px;margin-top:4px;}
+.mf-item{display:flex;align-items:center;gap:9px;background:var(--bg3);border:1px solid var(--bd);
+  border-radius:var(--r);padding:8px 12px;font-size:12px;color:var(--txt);}
+.mf-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mf-remove{color:var(--txt3);cursor:pointer;font-size:14px;flex-shrink:0;}
+.mf-remove:hover{color:var(--red);}
+.mf-add{width:100%;padding:8px;border-radius:var(--r);border:1px dashed var(--bd2);
+  background:transparent;color:var(--txt3);font-size:12px;cursor:pointer;text-align:center;
+  transition:all 0.15s;position:relative;}
+.mf-add:hover{border-color:var(--acc);color:var(--acc2);}
+.mf-add input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+
+.staging-limited{border-color:var(--yellow)!important;opacity:0.9;}
+.si-warn{font-size:10px;color:var(--yellow);font-weight:600;margin-left:4px;}
+.chart-click-hint{font-size:10.5px;color:var(--txt3);text-align:right;margin-top:6px;padding-top:4px;border-top:1px solid var(--bd);}
+.qa-msg.a strong{color:var(--acc2);}
+/* STAGING AREA */
+.staging-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.staging-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--txt);}
+.staging-ic{font-size:15px;}
+.staging-badge{font-size:11px;font-weight:700;background:var(--acc-bg);color:var(--acc2);
+  border:1px solid rgba(123,95,255,0.2);padding:2px 8px;border-radius:10px;}
+.staging-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:12px;}
+.staging-item{display:flex;align-items:center;gap:7px;background:var(--bg2);
+  border:1px solid var(--bd);border-radius:var(--r);padding:8px 10px;
+  min-width:0;transition:all 0.15s;}
+.staging-item:hover{border-color:var(--bd2);}
+.si-ic{font-size:15px;flex-shrink:0;}
+.si-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.si-name{font-size:12px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.si-size{font-size:10.5px;color:var(--txt3);}
+.si-remove{font-size:13px;color:var(--txt3);cursor:pointer;padding:1px 3px;border-radius:4px;
+  transition:all 0.15s;flex-shrink:0;line-height:1;}
+.si-remove:hover{background:rgba(224,82,82,0.12);color:var(--red);}
+.staging-start{width:100%;justify-content:center;font-size:14px;padding:12px;}
+
+/* ── LAYOUT SYSTEM ── */
+.ly-gap{display:flex;flex-direction:column;gap:12px;}
+.g3eq{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;}
+.g-40-60{display:grid;grid-template-columns:2fr 3fr;gap:12px;margin-bottom:12px;}
+.g-60-40{display:grid;grid-template-columns:3fr 2fr;gap:12px;margin-bottom:12px;}
+.g-full{margin-bottom:12px;}
+/* compact KPI 6개 */
+.kpi-strip-6{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+/* mini rank (comparison 레이아웃 3번째 패널) */
+.mini-rank{display:flex;flex-direction:column;gap:5px;}
+.mini-rank-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd);}
+.mini-rank-item:last-child{border-bottom:none;}
+.mini-rank-no{font-size:11px;color:var(--txt3);width:18px;flex-shrink:0;}
+.mini-rank-name{flex:1;font-size:12.5px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mini-rank-val{font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--txt2);flex-shrink:0;}
+
+/* kpi_focus 레이아웃 전용 - 대형 KPI 카드 */
+.kpi-strip-large{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+.kpi-lg{padding:18px 20px;}
+.kpi-val-lg{font-size:34px;}
+
+/* KPI 트렌드 인디케이터 */
+.kpi-trend{font-size:11.5px;font-weight:600;margin-top:3px;}
+.kpi-trend.up{color:var(--green);}
+.kpi-trend.dn{color:var(--red);}
+.kpi-trend.flat{color:var(--txt3);}
+
+/* sidebar_kpi 레이아웃 */
+.g-sidebar-kpi{display:grid;grid-template-columns:190px 1fr;gap:12px;margin-bottom:12px;align-items:start;}
+.kpi-sidebar{display:flex;flex-direction:column;gap:8px;}
+.kpi-sidebar .kpi{padding:12px 14px;}
+
+/* kpi_grid 레이아웃 — 4열 대형 */
+.kpi-strip-8{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+
+@media(max-width:768px){
+  .g-sidebar-kpi{grid-template-columns:1fr!important;}
+  .kpi-strip-8{grid-template-columns:repeat(2,1fr)!important;}
+}
+
+/* PAGINATION */
+.lib-pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;}
+.pg-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;
+  border-radius:var(--r);background:var(--bg3);border:1px solid var(--bd);
+  color:var(--txt2);cursor:pointer;font-size:14px;transition:all 0.15s;user-select:none;}
+.pg-btn:hover:not(.disabled){background:var(--bg4);color:var(--txt);}
+.pg-btn.disabled{opacity:0.35;cursor:not-allowed;}
+.pg-info{font-size:12px;color:var(--txt3);padding:0 6px;}
+
+/* ═══════════════════════════════
+   모바일 / 태블릿 반응형
+   ═══════════════════════════════ */
+.mob-hamburger,.mob-qa-btn,.mob-lnb-overlay{display:none;}
+.mob-hamburger{align-items:center;justify-content:center;width:36px;height:36px;
+  border-radius:var(--r);background:var(--bg3);border:1px solid var(--bd);
+  cursor:pointer;font-size:18px;flex-shrink:0;}
+.mob-qa-btn{position:fixed;bottom:24px;right:20px;z-index:500;
+
+@media(max-width:768px){
+  .mob-hamburger{display:flex;}
+  .mob-qa-btn{display:flex;}
+  #mob-qa-close{display:block!important;}
+  .lnb{position:fixed;left:-234px;top:0;height:100%;z-index:300;transition:left 0.25s ease;box-shadow:none;}
+  .lnb.mob-open{left:0;box-shadow:4px 0 24px rgba(0,0,0,0.35);}
+  .mob-lnb-overlay.active{display:block;}
+  .qa{position:fixed;right:-105%;top:0;width:min(340px,100vw);height:100%;z-index:400;transition:right 0.25s ease;}
+  .qa.mob-open{right:0;box-shadow:-4px 0 24px rgba(0,0,0,0.3);}
+  .topbar{gap:8px;padding:10px 14px;flex-wrap:nowrap;overflow:hidden;}
+  .tb-title{font-size:14px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tb-sub{display:none;}
+  #theme-label{display:none;}
+  .empty-inner{padding:14px;}
+  .wb-steps{flex-wrap:wrap;gap:6px;justify-content:flex-start;}
+  .wb-arrow{display:none;}
+  .upload-zone{padding:24px 14px;}
+  .type-chips{flex-wrap:wrap;gap:5px;}
+  .staging-list{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .staging-header{flex-wrap:wrap;}
+  .db-toolbar{flex-wrap:wrap;gap:7px;padding:10px 12px;}
+  .db-tabs{order:3;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .db-src{order:1;} #db-date{display:none;}
+  .db-toolbar .btn{padding:5px 9px;font-size:11px;}
+  .db-scroll{padding:12px;}
+  .kpi-strip,.kpi-strip-large,.kpi-strip-6{grid-template-columns:repeat(2,1fr)!important;}
+  .g2,.g2eq,.g-40-60,.g-60-40,.g3eq{grid-template-columns:1fr!important;}
+  .lib-grid{grid-template-columns:1fr!important;}
+  .lib-cats{flex-wrap:wrap;gap:4px;}
+  .lib-header{flex-wrap:wrap;gap:8px;}
+  .an-wrap{padding:18px 14px;}
+  .modal{width:calc(100vw - 28px);max-width:420px;margin:0 14px;}
+  .exp-grid{grid-template-columns:1fr 1fr!important;}
+  .db-toolbar .theme-toggle{display:none;}
+}
+@media(max-width:480px){
+  .tb-title{max-width:90px;font-size:13px;}
+  .staging-list{grid-template-columns:1fr;}
+  .kpi{padding:10px 10px;}
+  .kpi-val{font-size:22px;}
+  .mob-qa-btn{bottom:20px;right:16px;}
+}
+@media(min-width:769px) and (max-width:1100px){
+  .lnb{width:200px;}
+  .qa{width:260px;}
+}
+
+/* 레이아웃 선택 드롭다운 */
+.layout-picker{position:relative;display:inline-block;}
+.layout-opt{display:flex;align-items:center;gap:6px;padding:8px 11px;
+  font-size:12px;color:var(--txt);cursor:pointer;transition:background 0.1s;border-radius:6px;}
+.layout-opt:hover{background:var(--bg3);}
+.layout-opt.cur{color:var(--acc2);font-weight:700;}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div class="mob-lnb-overlay" id="mob-overlay" onclick="toggleLNB()"></div>
+<button class="mob-qa-btn" id="mob-qa-btn" onclick="toggleQA()" title="AI에게 질문하기">💬</button>
+
+<!-- LNB -->
+<nav class="lnb">
+  <div class="lnb-logo">
+    <div class="logo-mark">f</div>
+    <span class="logo-text">flow AI</span>
+    <span class="logo-badge">BETA</span>
+  </div>
+
+  <!-- 고정 메뉴 -->
+  <div class="lnb-sec" style="padding-bottom:0;">
+    <div class="lnb-item" onclick="lnbSel(this,'chat')"><span class="lnb-ic">✦</span>새 채팅</div>
+    <div class="lnb-item" onclick="lnbSel(this,'chat')"><span class="lnb-ic">🤖</span>AI 업무 매니저</div>
+    <div class="lnb-item" onclick="lnbSel(this,'chat')"><span class="lnb-ic">💬</span>AI 챗봇</div>
+    <div class="lnb-item" id="lnb-db" onclick="lnbSel(this,'dashboard');goView('empty')"><span class="lnb-ic">📊</span>인사이트 대시보드<span class="lnb-new">NEW</span></div>
+  </div>
+
+  <!-- 히스토리 영역: 채팅 / 대시보드 전환 -->
+  <div style="flex:1;overflow-y:auto;padding:8px 10px 4px;">
+
+    <!-- 채팅 히스토리 -->
+    <div id="hist-chat">
+      <div class="lnb-sec-lbl" style="padding:8px 4px 6px;">채팅</div>
+      <div class="lnb-recent" onclick="toast('해당 채팅으로 이동합니다')">고객사 정보 분석</div>
+      <div class="lnb-recent" onclick="toast('해당 채팅으로 이동합니다')">AI 개론서 핵심 내용</div>
+      <div class="lnb-recent" onclick="toast('해당 채팅으로 이동합니다')">결과물 본질과 태도</div>
+      <div class="lnb-recent" onclick="toast('해당 채팅으로 이동합니다')">이번 주 일정 및 체크리스트</div>
+      <div class="lnb-recent" onclick="toast('해당 채팅으로 이동합니다')">2026년 4월 주 일정 체크리스트</div>
+      <div class="lnb-recent" onclick="toast('해당 채팅으로 이동합니다')">이번 주 일정과 할일</div>
+      <div class="lnb-recent" onclick="toast('해당 채팅으로 이동합니다')">내일 휴가 신청 메일</div>
+      <div class="lnb-recent" onclick="toast('해당 채팅으로 이동합니다')">2026 공지사항 요약</div>
+      <div class="lnb-recent" onclick="toast('해당 채팅으로 이동합니다')">2026년 연봉 인상 일정</div>
+    </div>
+
+    <!-- 대시보드 히스토리 (생성 시 동적으로 추가됨) -->
+    <div id="hist-db" style="display:none;"></div>
+
+  </div>
+
+  <div class="lnb-footer">
+    <div class="font-ctrl">
+      <div class="font-ctrl-title"><span>🔤</span> 글자 크기 조절</div>
+      <div class="font-btns">
+        <div class="font-btn" id="fs-sm" onclick="setFs('sm')">작게</div>
+        <div class="font-btn active-fs" id="fs-md" onclick="setFs('md')">보통</div>
+        <div class="font-btn" id="fs-lg" onclick="setFs('lg')">크게</div>
+        <div class="font-btn" id="fs-xl" onclick="setFs('xl')">더 크게</div>
+      </div>
+    </div>
+    <div class="lnb-user">
+      <div class="user-av">다</div>
+      <div class="user-info"><span class="user-name">다니엘</span><span class="user-role">Google</span></div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="mob-hamburger" onclick="toggleLNB()" title="메뉴">☰</div>
+    <span class="tb-title" id="t-title" onclick="startTitleEdit()" title="클릭하여 제목 편집" style="cursor:text;">인사이트 대시보드</span>
+    <span class="tb-sub" id="t-sub">파일을 올리면 AI가 대시보드를 자동으로 만들어 드립니다</span>
+    <div class="tb-sp"></div>
+    <div class="theme-toggle" onclick="toggleTheme()" id="theme-btn">
+      <span id="theme-label">🌙 다크</span>
+      <div class="toggle-track" id="toggle-track"><div class="toggle-thumb"></div></div>
+    </div>
+    <div id="t-act"></div>
+  </div>
+
+  <!-- ── EMPTY ── -->
+  <div class="view active" id="view-empty">
+    <div style="flex:1;overflow-y:auto;">
+      <div class="empty-inner">
+
+        <!-- 환영 배너 -->
+        <div class="welcome-banner">
+          <div class="wb-ic">👋</div>
+          <div>
+            <div class="wb-title" style="display:none;">안녕하세요! 인사이트 대시보드입니다</div>
+            <div class="wb-desc">엑셀, 워드, PPT, PDF 등 어떤 파일이든 올려 주시면 AI가 내용을 읽고 보기 쉬운 대시보드를 자동으로 만들어 드립니다.<br>AI를 잘 몰라도 괜찮습니다. 파일만 올려주세요 😊</div>
+            <div class="wb-steps">
+              <div class="wb-step"><div class="wb-step-num">1</div>파일 올리기</div>
+              <div class="wb-arrow">→</div>
+              <div class="wb-step"><div class="wb-step-num">2</div>AI가 분석</div>
+              <div class="wb-arrow">→</div>
+              <div class="wb-step"><div class="wb-step-num">3</div>대시보드 완성</div>
+              <div class="wb-arrow">→</div>
+              <div class="wb-step"><div class="wb-step-num">4</div>저장 · 공유</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 업로드 존 -->
+        <div class="upload-zone" id="up-zone">
+          <input type="file" class="upload-input" id="file-inp" multiple
+            accept=".xlsx,.xls,.csv,.json,.pptx,.ppt,.docx,.doc,.pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+            onchange="onFilePick(this)">
+          <div class="upload-ic">
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="26" cy="26" r="26" fill="var(--acc)" opacity="0.12"/>
+              <path d="M26 14 L26 36" stroke="var(--acc)" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M16 24 L26 14 L36 24" stroke="var(--acc)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <path d="M16 38 L36 38" stroke="var(--acc)" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="upload-title">파일을 여기에 끌어다 놓거나 클릭하세요</div>
+          <div class="upload-desc">엑셀·CSV·워드·PPT·PDF·이미지 지원<br>최대 파일 개수: 12개 &nbsp;|&nbsp; 파일당 크기 제한: 50MB</div>
+          <div class="type-chips">
+            <span class="type-chip">📗 Excel·CSV</span>
+            <span class="type-chip">📘 Word</span>
+            <span class="type-chip">📙 PowerPoint</span>
+            <span class="type-chip">📕 PDF</span>
+            <span class="type-chip">🖼 이미지</span>
+          </div>
+        </div>
+
+        <!-- 파일 스테이징 영역 (파일 선택 후 표시) -->
+        <div id="staging-area" style="display:none;width:100%;">
+          <div class="staging-header">
+            <div class="staging-title">
+              <span class="staging-ic">📋</span>
+              첨부한 파일 <span id="staging-count" class="staging-badge">0개</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <label class="btn btn-g" style="cursor:pointer;position:relative;">
+                + 파일 더 추가하기
+                <input type="file" multiple style="position:absolute;inset:0;opacity:0;cursor:pointer;"
+                  accept=".xlsx,.xls,.csv,.json,.pptx,.ppt,.docx,.doc,.pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+                  onchange="addMoreFiles(this)">
+              </label>
+              <button class="btn btn-g" onclick="clearStaging()">전체 삭제</button>
+            </div>
+          </div>
+          <div class="staging-list" id="staging-list"></div>
+          <button class="btn btn-p staging-start" id="staging-start-btn" onclick="startFromStaging()">
+            ✦ 대시보드 만들기
+          </button>
+        </div>
+
+        <div class="or-row"><div class="or-line"></div><span class="or-txt">템플릿 둘러보기</span><div class="or-line"></div></div>
+
+        <!-- 템플릿 라이브러리 -->
+        <div style="width:100%">
+          <div class="lib-header">
+            <div style="display:flex;align-items:center;">
+              <span class="lib-title">템플릿 라이브러리</span>
+              <span class="lib-count" id="lib-count">16개</span>
+            </div>
+            <div class="lib-cats">
+              <div class="lib-cat active" onclick="filterLib(this,'all')">전체</div>
+              <div class="lib-cat" onclick="filterLib(this,'sales')">📈 영업·매출</div>
+              <div class="lib-cat" onclick="filterLib(this,'finance')">💰 재무·회계</div>
+              <div class="lib-cat" onclick="filterLib(this,'ops')">⚙️ 운영·생산</div>
+              <div class="lib-cat" onclick="filterLib(this,'hr')">👥 인사·조직</div>
+              <div class="lib-cat" onclick="filterLib(this,'convert')">🔄 문서 변환</div>
+            </div>
+          </div>
+          <div class="lib-grid" id="lib-grid">
+
+            <!-- 영업·매출 -->
+            <div class="lib-card" data-cat="sales" onclick="startSample('월별_매출시재_현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">📊</span><span class="lib-badge badge-hot">인기</span></div>
+              <div class="lib-title-txt">월별 매출·시재 현황</div>
+              <div class="lib-desc">매출 실적, 계획 달성률, 거래처별 시재를 한눈에</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span><span class="lib-fmt">CSV</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="sales" onclick="startSample('영업사원별_실적현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">🏆</span><span class="lib-badge badge-pop">추천</span></div>
+              <div class="lib-title-txt">영업사원별 실적 현황</div>
+              <div class="lib-desc">담당자별 매출 달성률, 목표 대비 순위 분석</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="sales" onclick="startSample('지역별_매출분석.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">🗺️</span></div>
+              <div class="lib-title-txt">지역별 매출 분석</div>
+              <div class="lib-desc">권역·지점·도시별 매출 비중 및 성장률 비교</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span><span class="lib-fmt">CSV</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="sales" onclick="startSample('고객사별_수주현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">🤝</span></div>
+              <div class="lib-title-txt">고객사별 수주 현황</div>
+              <div class="lib-desc">고객사별 수주·납품·미수금 현황을 한 화면에</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span></div>
+            </div>
+
+            <!-- 재무·회계 -->
+            <div class="lib-card" data-cat="finance" onclick="startSample('손익계산서_2025.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">💹</span><span class="lib-badge badge-hot">인기</span></div>
+              <div class="lib-title-txt">손익계산서 대시보드</div>
+              <div class="lib-desc">매출·원가·판관비·영업이익을 월별로 시각화</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span><span class="lib-fmt">PDF</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="finance" onclick="startSample('현금흐름_현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">💸</span></div>
+              <div class="lib-title-txt">현금흐름 현황</div>
+              <div class="lib-desc">영업·투자·재무 활동별 현금 흐름 추이 분석</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="finance" onclick="startSample('예산대비_실적.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">📋</span><span class="lib-badge badge-pop">추천</span></div>
+              <div class="lib-title-txt">예산 대비 실적</div>
+              <div class="lib-desc">부서별·항목별 예산 집행률과 잔액을 한눈에</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span><span class="lib-fmt">CSV</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="finance" onclick="startSample('외상매출금_관리.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">📬</span></div>
+              <div class="lib-title-txt">외상매출금 관리</div>
+              <div class="lib-desc">거래처별 외상 잔액, 연체 현황, 회수율 추적</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span></div>
+            </div>
+
+            <!-- 운영·생산 -->
+            <div class="lib-card" data-cat="ops" onclick="startSample('제품별_판매현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">📦</span><span class="lib-badge badge-hot">인기</span></div>
+              <div class="lib-title-txt">제품별 판매 현황</div>
+              <div class="lib-desc">제품군별 판매량·매출 비중·전기 대비 증감 분석</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span><span class="lib-fmt">CSV</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="ops" onclick="startSample('재고_현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">🏭</span></div>
+              <div class="lib-title-txt">재고 현황 분석</div>
+              <div class="lib-desc">품목별 재고량, 적정 재고 대비 과·부족 현황</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="ops" onclick="startSample('생산실적_현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">⚙️</span></div>
+              <div class="lib-title-txt">생산 실적 현황</div>
+              <div class="lib-desc">라인별·제품별 생산량, 가동률, 불량률 추적</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span><span class="lib-fmt">CSV</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="ops" onclick="startSample('품질관리_현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">✅</span></div>
+              <div class="lib-title-txt">품질 관리 현황</div>
+              <div class="lib-desc">불량률 추이, 클레임 현황, 공정별 품질 지표</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span></div>
+            </div>
+
+            <!-- 인사·조직 -->
+            <div class="lib-card" data-cat="hr" onclick="startSample('인원_현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">👥</span><span class="lib-badge badge-pop">추천</span></div>
+              <div class="lib-title-txt">인원 현황 대시보드</div>
+              <div class="lib-desc">부서별 인원 구성, 신규·퇴직 현황, 연령 분포</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="hr" onclick="startSample('근태_성과현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">📅</span></div>
+              <div class="lib-title-txt">근태·성과 현황</div>
+              <div class="lib-desc">출퇴근·초과근무·연차 현황 및 KPI 달성률</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span><span class="lib-fmt">CSV</span></div>
+            </div>
+
+            <!-- 문서 변환 -->
+            <div class="lib-card" data-cat="convert" onclick="startSample('보고서.pptx','PPT')">
+              <div class="lib-card-top"><span class="lib-ic">📙</span><span class="lib-badge badge-new">NEW</span></div>
+              <div class="lib-title-txt">PPT 보고서 → 대시보드</div>
+              <div class="lib-desc">PPT 슬라이드에서 수치를 자동 추출해 시각화</div>
+              <div class="lib-meta"><span class="lib-fmt">PPT</span><span class="lib-fmt">PPTX</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="convert" onclick="startSample('보고서.docx','Word')">
+              <div class="lib-card-top"><span class="lib-ic">📘</span><span class="lib-badge badge-new">NEW</span></div>
+              <div class="lib-title-txt">워드 보고서 → 대시보드</div>
+              <div class="lib-desc">워드 문서의 표·수치를 읽어 대시보드로 변환</div>
+              <div class="lib-meta"><span class="lib-fmt">DOC</span><span class="lib-fmt">DOCX</span></div>
+            </div>
+
+            <!-- 신규 8개 -->
+            <div class="lib-card" data-cat="sales" onclick="startSample('채널별_매출분석.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">📊</span></div>
+              <div class="lib-title-txt">채널별 매출 분석</div>
+              <div class="lib-desc">온라인·오프라인·B2B·해외 채널 비교 분석</div>
+              <div class="lib-meta"><span class="lib-fmt">grouped 차트</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="sales" onclick="startSample('목표달성_현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">🎯</span></div>
+              <div class="lib-title-txt">영업 목표 달성 현황</div>
+              <div class="lib-desc">팀별 목표 달성률 게이지 및 달성 현황 분석</div>
+              <div class="lib-meta"><span class="lib-fmt">게이지 차트</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="finance" onclick="startSample('수익성_분석.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">💹</span></div>
+              <div class="lib-title-txt">수익성 분석</div>
+              <div class="lib-desc">매출총이익률·영업이익률·EBITDA 월별 추이</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="ops" onclick="startSample('설비_가동현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">⚙️</span></div>
+              <div class="lib-title-txt">설비 가동 현황</div>
+              <div class="lib-desc">설비별 가동률 게이지 및 고장·정비 현황</div>
+              <div class="lib-meta"><span class="lib-fmt">게이지 차트</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="hr" onclick="startSample('채용_현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">🧑‍💼</span></div>
+              <div class="lib-title-txt">채용 파이프라인</div>
+              <div class="lib-desc">부서별 채용 단계 현황 및 합격률 분석</div>
+              <div class="lib-meta"><span class="lib-fmt">Excel</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="hr" onclick="startSample('교육훈련_현황.xlsx','Excel')">
+              <div class="lib-card-top"><span class="lib-ic">📚</span></div>
+              <div class="lib-title-txt">교육·훈련 현황</div>
+              <div class="lib-desc">직군별 역량 레이더 및 교육 이수율 분석</div>
+              <div class="lib-meta"><span class="lib-fmt">radar 차트</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="convert" onclick="startSample('PDF_보고서_분석.pdf','PDF')">
+              <div class="lib-card-top"><span class="lib-ic">📕</span></div>
+              <div class="lib-title-txt">PDF 보고서 → 대시보드</div>
+              <div class="lib-desc">PDF 내 수치·차트를 읽어 대시보드로 변환</div>
+              <div class="lib-meta"><span class="lib-fmt">PDF</span></div>
+            </div>
+
+            <div class="lib-card" data-cat="convert" onclick="startSample('이메일_보고서_분석.docx','Word')">
+              <div class="lib-card-top"><span class="lib-ic">📧</span></div>
+              <div class="lib-title-txt">이메일·보고서 → 대시보드</div>
+              <div class="lib-desc">이메일 보고서에서 핵심 안건·수치 자동 추출</div>
+              <div class="lib-meta"><span class="lib-fmt">DOCX</span><span class="lib-fmt">grouped 차트</span></div>
+            </div>
+
+          </div>
+          <!-- 페이지네이션 (전체 탭에서만 표시) -->
+          <div class="lib-pagination" id="lib-pagination">
+            <div class="pg-btn disabled" id="pg-prev" onclick="pgMove(-1)">‹</div>
+            <span class="pg-info" id="pg-info">1 / 2페이지</span>
+            <div class="pg-btn" id="pg-next" onclick="pgMove(1)">›</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <div class="view" id="view-analyzing" style="flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+    <div class="an-wrap">
+      <div class="an-header">
+        <div class="an-title" id="an-title-txt">📊 데이터를 분석하고 있습니다</div>
+        <div class="an-desc">AI가 파일 내용을 읽고 있습니다. 잠시만 기다려 주세요 (약 10~30초)</div>
+      </div>
+      <div class="an-card">
+        <div class="an-file">
+          <span class="an-file-ic" id="an-ic">📗</span>
+          <div style="min-width:0;">
+            <div class="an-file-name" id="an-name">파일명</div>
+            <div class="an-file-type" id="an-type">분석 중...</div>
+          </div>
+          <span class="an-check">✓</span>
+        </div>
+        <div class="steps">
+          <div class="step" id="s1">
+            <div class="step-dot sd-done">✓</div>
+            <div><div class="step-lbl">파일 읽기 완료</div><div class="step-sub" id="s1-sub">파일 구조를 확인했습니다</div></div>
+            <span class="step-badge sb-done">완료</span>
+          </div>
+          <div class="step" id="s2">
+            <div class="step-dot sd-run">◉</div>
+            <div><div class="step-lbl">수치·지표 집계 중</div><div class="step-sub">데이터를 읽고 주요 수치를 계산하고 있습니다...</div></div>
+            <span class="step-badge sb-run">처리 중</span>
+          </div>
+          <div class="step" id="s3">
+            <div class="step-dot sd-wait">○</div>
+            <div><div class="step-lbl">차트 구성 결정</div><div class="step-sub">어떤 차트로 보여드릴지 결정합니다</div></div>
+            <span class="step-badge sb-wait">대기 중</span>
+          </div>
+          <div class="step" id="s4">
+            <div class="step-dot sd-wait">○</div>
+            <div><div class="step-lbl">AI 분석 의견 작성</div><div class="step-sub">데이터에서 중요한 패턴을 찾아 의견을 작성합니다</div></div>
+            <span class="step-badge sb-wait">대기 중</span>
+          </div>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-row"><span class="prog-label">진행률</span><span class="prog-pct" id="prog-pct">25%</span></div>
+          <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:25%"></div></div>
+        </div>
+      </div>
+      <div class="an-tip">
+        <span class="an-tip-ic">💡</span>
+        <div class="an-tip-txt" id="an-tip">AI가 파일을 꼼꼼히 읽고 있어요. 완성되면 자동으로 대시보드 화면으로 이동합니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD ── -->
+  <div class="view" id="view-dashboard" style="flex-direction:row;">
+    <div class="db-main">
+      <div class="db-toolbar">
+        <div class="db-src"><div class="db-dot"></div><span id="db-src-name">파일명</span></div>
+        <div style="font-size:11.5px;color:var(--txt3);" id="db-date"></div>
+        <div class="db-tabs">
+          <div class="db-tab active" onclick="switchTab(this,'overview')">전체 현황</div>
+          <div class="db-tab" onclick="switchTab(this,'sales')">매출 상세</div>
+          <div class="db-tab" onclick="switchTab(this,'cashflow')">시재 현황</div>
+          <div class="db-tab" onclick="switchTab(this,'partner')">거래처</div>
+        </div>
+        <div style="flex:1;"></div>
+        <button class="btn btn-g" onclick="goView('empty')">📂 새 파일 올리기</button>
+        <button class="btn btn-g" id="btn-reshuffle" onclick="reshuffleDashboard()" style="display:none;" title="원본 파일을 다른 관점으로 AI가 재분석합니다">🔬 AI 재분석</button>
+        <div class="layout-picker" id="layout-picker" style="display:none;">
+          <button class="btn btn-g" onclick="toggleLayoutPicker()" id="btn-layout-pick">뷰 변경 ▾</button>
+        </div>
+        <button class="btn btn-p" onclick="openExp()">⬇ 내보내기·공유</button>
+      </div>
+
+      <div class="db-scroll" id="db-scroll">
+
+        <!-- OVERVIEW — 레이아웃·내용 전부 JS에서 동적 생성 -->
+        <div class="tab-c active" id="tab-overview"></div>
+
+        <!-- SALES -->
+        <div class="tab-c" id="tab-sales">
+          <div class="stat-grid">
+            <div class="stat"><div class="stat-lbl">2025 월 평균 매출</div><div class="stat-val">42.8<span style="font-size:14px;color:var(--txt2);">억</span></div><div class="stat-chg up">▲ 전년 대비 +6.3%</div></div>
+            <div class="stat"><div class="stat-lbl">가장 잘 팔린 달</div><div class="stat-val">68.8<span style="font-size:14px;color:var(--txt2);">억</span></div><div class="stat-chg" style="color:var(--txt3);">2025년 4월</div></div>
+            <div class="stat"><div class="stat-lbl">가장 적게 팔린 달</div><div class="stat-val">31.1<span style="font-size:14px;color:var(--txt2);">억</span></div><div class="stat-chg dn">▼ 2025년 10월</div></div>
+          </div>
+          <div class="card" style="margin-bottom:12px;">
+            <div class="card-title">월별 매출 흐름</div>
+            <div class="card-sub">2025년 1월 ~ 2026년 2월 · 억원</div>
+            <div style="height:195px;position:relative;"><canvas id="c-sales-line"></canvas></div>
+          </div>
+          <div class="g2eq">
+            <div class="card">
+              <div class="card-title">제품군별 매출 비중</div>
+              <div class="card-sub">2025년 연간 기준 · 퍼센트(%)</div>
+              <div style="height:160px;position:relative;"><canvas id="c-product"></canvas></div>
+              <div class="leg-row" style="margin-top:10px;gap:5px 11px;">
+                <span class="leg"><span class="leg-dot" style="background:#378ADD"></span>제품군1 (42%)</span>
+                <span class="leg"><span class="leg-dot" style="background:#43C59E"></span>제품군2 (28%)</span>
+                <span class="leg"><span class="leg-dot" style="background:#E8A838"></span>제품군3 (18%)</span>
+                <span class="leg"><span class="leg-dot" style="background:#D85A30"></span>수출 (8%)</span>
+                <span class="leg"><span class="leg-dot" style="background:#5E5C6E"></span>기타 (4%)</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">분기별 성장률</div>
+              <div class="card-sub">전분기 대비 증감 · 퍼센트(%)</div>
+              <div style="height:195px;position:relative;"><canvas id="c-qoq"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CASHFLOW -->
+        <div class="tab-c" id="tab-cashflow">
+          <div class="stat-grid">
+            <div class="stat"><div class="stat-lbl">총 수입 시재</div><div class="stat-val">7,744<span style="font-size:13px;color:var(--txt2);">백만</span></div><div class="stat-chg" style="color:var(--txt3);">2026년 2월 기준</div></div>
+            <div class="stat"><div class="stat-lbl">총 지출 시재</div><div class="stat-val">442<span style="font-size:13px;color:var(--txt2);">백만</span></div><div class="stat-chg dn">지급해야 할 잔액</div></div>
+            <div class="stat"><div class="stat-lbl">순 시재 잔액</div><div class="stat-val">7,302<span style="font-size:13px;color:var(--txt2);">백만</span></div><div class="stat-chg up">▲ 전월 대비 +4.2%</div></div>
+          </div>
+          <div class="g2eq">
+            <div class="card">
+              <div class="card-title">받을 돈 유형별 구성</div>
+              <div class="card-sub">2026년 2월 기준 · 백만원</div>
+              <div style="height:160px;position:relative;"><canvas id="c-cf-in"></canvas></div>
+              <div class="leg-row" style="margin-top:10px;">
+                <span class="leg"><span class="leg-dot" style="background:#185FA5"></span>외상매출금 7,451</span>
+                <span class="leg"><span class="leg-dot" style="background:#5DCAA5"></span>미수금 130</span>
+                <span class="leg"><span class="leg-dot" style="background:#85B7EB"></span>받을어음 115</span>
+                <span class="leg"><span class="leg-dot" style="background:#0F6E56"></span>기타 48</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">지급해야 할 돈 유형별 구성</div>
+              <div class="card-sub">2026년 2월 기준 · 백만원</div>
+              <div style="height:160px;position:relative;"><canvas id="c-cf-out"></canvas></div>
+              <div class="leg-row" style="margin-top:10px;">
+                <span class="leg"><span class="leg-dot" style="background:#D85A30"></span>공병보증금 188</span>
+                <span class="leg"><span class="leg-dot" style="background:#993C1D"></span>지급어음 184</span>
+                <span class="leg"><span class="leg-dot" style="background:#F0997B"></span>법인카드 26</span>
+                <span class="leg"><span class="leg-dot" style="background:#FAC775"></span>이자·기타 44</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PARTNER -->
+        <div class="tab-c" id="tab-partner">
+          <div class="insight" style="margin-bottom:14px;">
+            <div class="insight-ic">✦</div>
+            <div>
+              <div class="insight-lbl">거래처 분석 요약</div>
+              <div class="insight-txt">상위 2개 거래처(거래처73·거래처150)가 전체 수입의 <strong style="color:var(--yellow)">44%</strong>를 차지합니다. 이 두 곳의 결제가 늦어지면 현금 흐름에 바로 영향을 줄 수 있어 특별 관리가 필요합니다.</div>
+            </div>
+          </div>
+          <div class="g2eq">
+            <div class="card">
+              <div class="card-title">수입 거래처 전체 현황 (상위 15곳)</div>
+              <div class="card-sub">2026년 2월 기준 · 받아야 할 금액 · 만원</div>
+              <table class="tbl"><thead><tr><th style="width:44px">순위</th><th>거래처</th><th class="r" style="width:76px">금액</th><th style="width:70px">비율</th></tr></thead><tbody id="t-in-full"></tbody></table>
+            </div>
+            <div class="card">
+              <div class="card-title">지출 거래처 전체 현황 (상위 15곳)</div>
+              <div class="card-sub">2026년 2월 기준 · 지급해야 할 금액 · 만원</div>
+              <table class="tbl"><thead><tr><th style="width:44px">순위</th><th>거래처</th><th class="r" style="width:76px">금액</th><th style="width:70px">비율</th></tr></thead><tbody id="t-out-full"></tbody></table>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /db-scroll -->
+    </div>
+
+    <!-- QA PANEL -->
+    <div class="qa">
+      <div class="qa-hdr">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="qa-title">✦ AI에게 물어보기 <span class="qa-badge">BETA</span></div>
+          <span id="mob-qa-close" onclick="toggleQA()" style="display:none;font-size:20px;cursor:pointer;color:var(--txt3);padding:4px 6px;border-radius:6px;line-height:1;" title="닫기">×</span>
+        </div>
+        <div class="qa-desc">이 데이터에 대해 궁금한 것을 편하게<br>질문해 주세요. 쉽게 설명해 드립니다 😊</div>
+      </div>
+      <div class="qa-body" id="qa-body">
+        <div class="qa-chips-lbl">이런 질문을 해보세요</div>
+        <div class="qa-chips" id="qa-chips">
+          <div class="qa-chip" onclick="askQ('2026년 목표를 달성하려면 앞으로 월 평균 얼마씩 팔아야 해?')">2026년 목표 달성하려면 월 평균 얼마씩 팔아야 해?</div>
+          <div class="qa-chip" onclick="askQ('외상매출금이 왜 이렇게 많아?')">외상매출금이 왜 이렇게 많아?</div>
+          <div class="qa-chip" onclick="askQ('매출이 가장 많이 오른 달이 언제야?')">매출이 가장 많이 오른 달이 언제야?</div>
+          <div class="qa-chip" onclick="askQ('임원 보고용 한 페이지 요약을 만들어줘')">임원 보고용 요약 만들어줘</div>
+        </div>
+      </div>
+      <div class="qa-foot">
+        <div class="qa-inp-box">
+          <input class="qa-inp" id="qa-inp" placeholder="궁금한 것을 입력하세요..."
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendQ();}">
+          <span class="qa-send" onclick="sendQ()" title="전송 (Enter키)">↑</span>
+        </div>
+        <div class="qa-hint">Enter 키를 누르면 전송됩니다</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="overlay" id="exp-modal" onclick="if(event.target===this)closeExp()">
+  <div class="modal">
+    <div class="m-title">대시보드 저장 · 내보내기</div>
+    <div class="m-sub">원하는 형식을 선택하시면 해당 파일로 저장해 드립니다</div>
+    <div class="exp-grid">
+      <div class="exp-opt sel" onclick="selExp(this)"><div class="exp-ic">📄</div><div class="exp-title">PDF</div><div class="exp-desc">차트·표가 포함된 보고서</div></div>
+      <div class="exp-opt" onclick="selExp(this)"><div class="exp-ic">📗</div><div class="exp-title">엑셀</div><div class="exp-desc">수치를 정리한 스프레드시트</div></div>
+      <div class="exp-opt" onclick="selExp(this)"><div class="exp-ic">📙</div><div class="exp-title">파워포인트</div><div class="exp-desc">프레젠테이션 슬라이드</div></div>
+      <div class="exp-opt" onclick="selExp(this)"><div class="exp-ic">📘</div><div class="exp-title">워드</div><div class="exp-desc">표·분석 내용이 담긴 보고서</div></div>
+      <div class="exp-opt" onclick="selExp(this)"><div class="exp-ic">🖼</div><div class="exp-title">이미지</div><div class="exp-desc">대시보드 전체 이미지 저장</div></div>
+      <div class="exp-opt" onclick="selExp(this)" style="position:relative;"><div class="exp-ic">📋</div><div class="exp-title">flow 게시물</div><div class="exp-desc">flow 프로젝트에 바로 올리기</div><div style="position:absolute;top:8px;right:8px;font-size:9px;background:var(--bd2);color:var(--txt3);padding:1px 6px;border-radius:6px;">준비중</div></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeExp()">취소</button>
+      <button class="btn btn-p" onclick="doExp()">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── DATA ─── */
+const M=['25.01','25.02','25.03','25.04','25.05','25.06','25.07','25.08','25.09','25.10','25.11','25.12','26.01','26.02'];
+const ACT=[43.8,33.7,36.2,68.8,51.4,34.9,48.3,48.7,44.6,31.1,39.4,33.0,50.3,39.9];
+const PLAN=[null,null,null,null,null,null,null,null,null,null,null,null,48.3,41.5];
+const RATE=M.map((_,i)=>PLAN[i]?Math.round(ACT[i]/PLAN[i]*100):null);
+const EXT_T={xlsx:'Excel',xls:'Excel',csv:'CSV',json:'JSON',pptx:'PPT',ppt:'PPT',docx:'Word',doc:'Word',pdf:'PDF',jpg:'이미지',jpeg:'이미지',png:'이미지',gif:'이미지',bmp:'이미지',webp:'이미지'};
+const F_IC={Excel:'📗',CSV:'📄',Word:'📘',PPT:'📙',PDF:'📕',이미지:'🖼',JSON:'📋'};
+const TIPS=['AI가 파일을 꼼꼼히 읽고 있어요. 완성되면 자동으로 화면이 전환됩니다.','데이터가 많을수록 더 정확하고 풍부한 대시보드가 만들어집니다.','완성된 대시보드는 PDF, 엑셀, PPT 등 다양한 형식으로 저장할 수 있습니다.'];
+
+/* ─── THEME TOGGLE ─── */
+let isLight = false;
+function toggleTheme(){
+  isLight = !isLight;
+  document.body.classList.toggle('light', isLight);
+  document.getElementById('theme-label').textContent = isLight ? '☀️ 라이트' : '🌙 다크';
+  document.getElementById('toggle-track').classList.toggle('on', isLight);
+  // 차트 색상 업데이트 — x·y만 업데이트, y2는 고유 색상 유지
+  const gr = GR(), tk = TK();
+  Object.values(CI).forEach(c=>{
+    try{
+      const sc = c.options.scales||{};
+      ['x','y'].forEach(k=>{
+        if(!sc[k]) return;
+        if(sc[k].ticks) sc[k].ticks.color = tk;
+        if(sc[k].grid)  sc[k].grid.color  = gr;
+      });
+      if(c.options.plugins?.legend?.labels) c.options.plugins.legend.labels.color = tk;
+      c.update();
+    }catch(e){}
+  });
+}
+
+/* ─── TOAST ─── */
+function toast(msg,dur=2800){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+/* ─── TEMPLATE LIBRARY FILTER + PAGINATION ─── */
+const PG_SIZE = 8;
+let pgCurrent = 1;
+let pgCat = 'all';
+
+function filterLib(el, cat){
+  document.querySelectorAll('.lib-cat').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  pgCat = cat;
+  pgCurrent = 1;
+  renderLib();
+}
+
+function pgMove(dir){
+  const cards = getVisibleCards();
+  const totalPages = Math.ceil(cards.length / PG_SIZE);
+  pgCurrent = Math.max(1, Math.min(totalPages, pgCurrent + dir));
+  renderLib();
+}
+
+function getVisibleCards(){
+  // 카테고리 기준으로 표시할 카드 목록 반환
+  return Array.from(document.querySelectorAll('.lib-card[data-cat]'))
+    .filter(c => pgCat === 'all' || c.dataset.cat === pgCat);
+}
+
+function renderLib(){
+  const allCards = Array.from(document.querySelectorAll('.lib-card[data-cat]'));
+  const visible = allCards.filter(c => pgCat === 'all' || c.dataset.cat === pgCat);
+  const isAll = pgCat === 'all';
+  const totalPages = isAll ? Math.ceil(visible.length / PG_SIZE) : 1;
+
+  // 카드 표시/숨김
+  allCards.forEach(c => c.classList.add('hidden'));
+  const startIdx = isAll ? (pgCurrent - 1) * PG_SIZE : 0;
+  const endIdx   = isAll ? pgCurrent * PG_SIZE : visible.length;
+  visible.slice(startIdx, endIdx).forEach(c => c.classList.remove('hidden'));
+
+  // 카운트 업데이트
+  document.getElementById('lib-count').textContent = visible.length + '개';
+
+  // 페이지네이션 표시 여부 및 상태
+  const pg = document.getElementById('lib-pagination');
+  pg.style.display = isAll && totalPages > 1 ? 'flex' : 'none';
+  if(isAll){
+    document.getElementById('pg-info').textContent = `${pgCurrent} / ${totalPages}페이지`;
+    document.getElementById('pg-prev').classList.toggle('disabled', pgCurrent <= 1);
+    document.getElementById('pg-next').classList.toggle('disabled', pgCurrent >= totalPages);
+  }
+}
+
+/* ─── FONT SIZE ─── */
+const FS_ZOOM={sm:0.82,md:1.0,lg:1.18,xl:1.38};
+const FS_LBL={sm:'작게',md:'보통',lg:'크게',xl:'아주 크게'};
+function setFs(k){
+  const z=FS_ZOOM[k];
+  const inv=Math.round(100/z*1000)/1000;
+  document.body.style.zoom=z;
+  document.body.style.width=inv+'%';
+  document.body.style.height=inv+'vh';
+  document.querySelectorAll('.font-btn').forEach(b=>b.classList.remove('active-fs'));
+  document.getElementById('fs-'+k).classList.add('active-fs');
+  toast(`글자 크기를 "${FS_LBL[k]}"으로 변경했습니다`);
+  Object.values(CI).forEach(c=>{try{c.resize();}catch(e){}});
+}
+
+/* ─── LNB ─── */
+function lnbSel(el, mode){
+  document.querySelectorAll('.lnb-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  const isDb = (mode === 'dashboard');
+  document.getElementById('hist-chat').style.display = isDb ? 'none' : 'block';
+  document.getElementById('hist-db').style.display  = isDb ? 'block' : 'none';
+}
+function lnbSelRecent(el){
+  document.querySelectorAll('#hist-db .lnb-recent').forEach(r=>r.classList.remove('active'));
+  el.classList.add('active');
+}
+function openRecent(){
+  // 히스토리에 항목이 있으면 첫 번째를 클릭, 없으면 빈 화면 유지
+  const first = document.querySelector('#hist-db .lnb-recent');
+  if(first) first.click();
+}
+
+/* ─── VIEW ─── */
+function goView(n){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+n).classList.add('active');
+  const ttl=document.getElementById('t-title'),sub=document.getElementById('t-sub');
+  document.getElementById('t-act').innerHTML='';
+  if(n==='empty'){
+    ttl.textContent='인사이트 대시보드';
+    sub.textContent='파일을 올리면 AI가 대시보드를 자동으로 만들어 드립니다';
+    const rb=document.getElementById('btn-reshuffle'); if(rb) rb.style.display='none';
+    const lp=document.getElementById('layout-picker'); if(lp) lp.style.display='none';
+  }
+  else if(n==='analyzing'){ttl.textContent='데이터 분석 중';sub.textContent='잠시만 기다려 주세요';}
+  else if(n==='dashboard'){}
+}
+
+/* ─── FILE STAGING ─── */
+let stagedFiles = [];
+
+const ANALYZABLE_EXT = new Set(['xlsx','xls','csv','json','docx','doc','pptx','ppt','pdf','jpg','jpeg','png','gif','bmp','webp']);
+
+function stageFiles(newFiles){
+  let warnedUnanalyzable = false;
+  Array.from(newFiles).forEach(f => {
+    if(stagedFiles.length >= 12){ toast('⚠️ 최대 12개까지 올릴 수 있습니다'); return; }
+    if(!stagedFiles.find(x => x.name === f.name && x.size === f.size)){
+      stagedFiles.push(f);
+      const ext = f.name.split('.').pop().toLowerCase();
+      if(!ANALYZABLE_EXT.has(ext) && !warnedUnanalyzable){
+        warnedUnanalyzable = true;
+        toast('⚠️ PDF·이미지·PPT는 텍스트 추출이 제한됩니다. 대시보드 품질이 낮을 수 있습니다.', 4000);
+      }
+    }
+  });
+  renderStaging();
+}
+
+function renderStaging(){
+  const area = document.getElementById('staging-area');
+  const list = document.getElementById('staging-list');
+  const count = document.getElementById('staging-count');
+  if(!stagedFiles.length){ area.style.display = 'none'; return; }
+  area.style.display = '';
+  count.textContent = stagedFiles.length + '개';
+  list.innerHTML = stagedFiles.map((f, i) => {
+    const ext = f.name.split('.').pop().toLowerCase();
+    const ic = F_IC[EXT_T[ext] || 'Excel'] || '📄';
+    const kb = f.size < 1024*1024 ? (f.size/1024).toFixed(1)+'KB' : (f.size/1024/1024).toFixed(1)+'MB';
+    const limited = !ANALYZABLE_EXT.has(ext);
+    return `<div class="staging-item${limited?' staging-limited':''}">
+      <span class="si-ic">${ic}</span>
+      <div class="si-info">
+        <span class="si-name" title="${f.name}">${f.name}${limited?'<span class="si-warn"> 분석 제한</span>':''}</span>
+        <span class="si-size">${kb}</span>
+      </div>
+      <span class="si-remove" onclick="removeStagedFile(${i})" title="제거">✕</span>
+    </div>`;
+  }).join('');
+}
+
+function removeStagedFile(i){
+  stagedFiles.splice(i, 1);
+  renderStaging();
+}
+
+function clearStaging(){
+  stagedFiles = [];
+  renderStaging();
+  document.getElementById('file-inp').value = '';
+}
+
+function addMoreFiles(inp){
+  if(inp.files) stageFiles(inp.files);
+  inp.value = '';
+}
+
+async function startFromStaging(){
+  if(!stagedFiles.length) return;
+  const files = stagedFiles.slice(0, 12);
+  stagedFiles = [];
+  renderStaging();
+
+  if(files.length === 1){
+    const ext = files[0].name.split('.').pop().toLowerCase();
+    readAndAnalyze(files[0], EXT_T[ext] || 'Excel');
+    return;
+  }
+
+  // 다중 파일: 각 파일 텍스트를 읽어서 합산
+  const fname = `${files.length}개 파일 합산 대시보드`;
+  const ext0 = files[0].name.split('.').pop().toLowerCase();
+  const ftype = EXT_T[ext0] || 'Excel';
+  setupAnView(fname, ftype, `${files.length}개 파일 구조 확인 완료`);
+  goView('analyzing');
+
+  const parts = [];
+  for(const f of files){
+    const ext = f.name.split('.').pop().toLowerCase();
+    const ft = EXT_T[ext] || 'Excel';
+    try{
+      if(ft === 'Excel' || ft === 'CSV'){
+        const ab = await f.arrayBuffer();
+        const wb = XLSX.read(ab, {type:'array'});
+        const rows = [];
+        wb.SheetNames.forEach(sn => {
+          const csv = XLSX.utils.sheet_to_csv(wb.Sheets[sn], {blankrows:false});
+          if(csv.trim()) rows.push(`[${f.name} / 시트: ${sn}]\n${csv.slice(0,2000)}`);
+        });
+        parts.push(rows.join('\n'));
+      } else if(ft === 'Word'){
+        const ab = await f.arrayBuffer();
+        const result = await mammoth.extractRawText({arrayBuffer:ab});
+        parts.push(`[${f.name}]\n${result.value.slice(0,2000)}`);
+      } else if(ft === 'PPT'){
+        const text = await extractPPTX(f);
+        parts.push(`[${f.name}]\n${text.slice(0,2000)}`);
+      } else if(ft === 'PDF'){
+        try{
+          const text = await extractPDF(f);
+          parts.push(`[${f.name}]\n${text.slice(0,2000)}`);
+        } catch(e){
+          parts.push(`[${f.name}] 스캔 PDF (텍스트 추출 불가)`);
+        }
+      } else if(ft === '이미지'){
+        parts.push(`[${f.name}] 이미지 파일 (텍스트 추출 생략)`);
+      } else {
+        parts.push(`[${f.name}] 파일 유형: ${ft}`);
+      }
+    } catch(e){ parts.push(`[${f.name}] 읽기 오류`); }
+  }
+  const combinedText = parts.join('\n\n').slice(0, 8000);
+  document.getElementById('s1-sub').textContent = `${files.length}개 파일 텍스트 추출 완료`;
+  runAnalysis(fname, ftype, combinedText);
+}
+
+/* ─── FILE PICK ─── */
+function onFilePick(inp){
+  if(!inp.files || !inp.files.length) return;
+  stageFiles(inp.files);
+  inp.value = '';
+}
+
+/* ─── 실제 파일 읽기 (SheetJS / mammoth) ─── */
+/* ─── 고도화 파일 추출: PPTX / PDF / 이미지 ─── */
+
+// PPTX: JSZip으로 슬라이드 XML 파싱 → 텍스트 추출
+async function extractPPTX(file){
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const slideFiles = Object.keys(zip.files)
+    .filter(n => n.match(/^ppt\/slides\/slide\d+\.xml$/))
+    .sort((a,b)=>{
+      const na=parseInt(a.match(/\d+/)?.[0]||0), nb=parseInt(b.match(/\d+/)?.[0]||0);
+      return na-nb;
+    });
+  const parts = [];
+  for(const sf of slideFiles.slice(0, 30)){
+    const xml = await zip.files[sf].async('string');
+    // XML 태그 제거 후 텍스트 추출
+    const text = xml.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+    if(text.length > 10) parts.push(`[슬라이드 ${slideFiles.indexOf(sf)+1}] ${text.slice(0,600)}`);
+  }
+  return parts.join('\n\n').slice(0, 8000);
+}
+
+// PDF: pdf.js로 텍스트 레이어 추출 (텍스트 PDF 대응)
+async function extractPDF(file){
+  // pdf.js worker 설정
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  } else {
+    throw new Error('pdf.js 미로드');
+  }
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+  const totalPages = pdf.numPages;
+  const parts = [];
+  for(let p=1; p<=Math.min(totalPages, 20); p++){
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const text = tc.items.map(i=>i.str).join(' ').trim();
+    if(text.length > 10) parts.push(`[${p}페이지] ${text.slice(0, 400)}`);
+  }
+  if(!parts.length) throw new Error('텍스트 없음 (스캔 PDF)');
+  return `파일명: ${file.name} (${totalPages}페이지)\n\n` + parts.join('\n\n').slice(0, 8000);
+}
+
+// 이미지: base64로 변환 → Claude Vision API에 직접 전달
+async function extractImage(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]); // base64 only
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function readAndAnalyze(file, ftype){
+  const fname=file.name;
+  setupAnView(fname,ftype,'파일을 읽는 중입니다...');
+  goView('analyzing');
+
+  let extractedText='(파일 내용을 읽는 중 오류가 발생했습니다)';
+  let imageBase64 = null; // 이미지 파일용
+
+  try{
+    if(ftype==='Excel'||ftype==='CSV'){
+      const ab=await file.arrayBuffer();
+      const wb=XLSX.read(ab,{type:'array'});
+      const rows=[];
+      wb.SheetNames.forEach(sn=>{
+        const ws=wb.Sheets[sn];
+        const csv=XLSX.utils.sheet_to_csv(ws,{blankrows:false});
+        if(csv.trim())rows.push(`[시트: ${sn}]\n${csv.slice(0,3000)}`);
+      });
+      extractedText=rows.join('\n\n').slice(0,8000);
+      document.getElementById('s1-sub').textContent=`시트 ${wb.SheetNames.length}개, 데이터 ${extractedText.length.toLocaleString()}자 읽기 완료`;
+
+    } else if(ftype==='Word'){
+      const ab=await file.arrayBuffer();
+      const result=await mammoth.extractRawText({arrayBuffer:ab});
+      extractedText=result.value.slice(0,8000);
+      document.getElementById('s1-sub').textContent=`본문 ${extractedText.length.toLocaleString()}자 추출 완료`;
+
+    } else if(ftype==='PPT'){
+      document.getElementById('s1-sub').textContent='슬라이드 텍스트 추출 중...';
+      extractedText = await extractPPTX(file);
+      const slideCount = (extractedText.match(/\[슬라이드/g)||[]).length;
+      document.getElementById('s1-sub').textContent=`슬라이드 ${slideCount}장, ${extractedText.length.toLocaleString()}자 추출 완료`;
+
+    } else if(ftype==='PDF'){
+      document.getElementById('s1-sub').textContent='PDF 텍스트 추출 중...';
+      try{
+        extractedText = await extractPDF(file);
+        const pageCount = (extractedText.match(/\[\d+페이지\]/g)||[]).length;
+        document.getElementById('s1-sub').textContent=`${pageCount}페이지 텍스트 추출 완료`;
+      } catch(pdfErr){
+        // 스캔 PDF: 첫 페이지만 canvas로 렌더링 후 base64 전달
+        document.getElementById('s1-sub').textContent='스캔 PDF — 1페이지 이미지 렌더링 중...';
+        try{
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          const ab = await file.arrayBuffer();
+          const pdfDoc = await pdfjsLib.getDocument({data: ab}).promise;
+          const page = await pdfDoc.getPage(1);
+          const viewport = page.getViewport({scale: 1.5});
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+          imageBase64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+          extractedText = `파일명: ${fname} (스캔 PDF ${pdfDoc.numPages}페이지 — 1페이지 이미지 분석)`;
+          document.getElementById('s1-sub').textContent='스캔 PDF 1페이지 렌더링 완료 — Vision 분석 준비됨';
+        } catch(renderErr){
+          extractedText = `파일명: ${fname} (스캔 PDF — 렌더링 실패)`;
+          document.getElementById('s1-sub').textContent='PDF 렌더링 오류 — 기본 분석으로 진행합니다';
+        }
+      }
+
+    } else if(ftype==='이미지'){
+      document.getElementById('s1-sub').textContent='이미지 분석 준비 중...';
+      imageBase64 = await extractImage(file);
+      extractedText = `파일명: ${fname} (이미지 파일 — Vision 분석)`;
+      document.getElementById('s1-sub').textContent='이미지 Vision 분석 준비 완료';
+
+    } else {
+      extractedText=`파일명: ${fname}\n파일 유형: ${ftype}`;
+      document.getElementById('s1-sub').textContent=`${ftype} 파일 확인 완료`;
+    }
+  } catch(e){
+    console.warn('파일 읽기 오류:',e);
+    document.getElementById('s1-sub').textContent='파일 읽기 오류 — 기본 분석으로 진행합니다';
+    extractedText=`파일명: ${fname}\n파일 유형: ${ftype}`;
+  }
+
+  lastFname = fname; lastFtype = ftype;
+  lastExtractedText = extractedText; isSampleDashboard = false;
+  runAnalysis(fname, ftype, extractedText, null, false, imageBase64);
+}
+
+/* ─── 샘플 실행 — 16개 고유 데이터셋 ─── */
+const SAMPLE_DB = {
+  '월별_매출시재_현황.xlsx': {
+    title:'월별 매출·시재 현황', accentColor:'#378ADD', layout:'standard',
+    kpis:[
+      {label:'2025 연간 매출',value:'514',unit:'억원',sub:'12개월 확정 실적',sparkline:[38,42,45,40,43,47,50,44,48,51,45,43]},
+      {label:'2026 누적 매출',value:'90',unit:'억원',sub:'1~2월 기준',sparkline:[50,40],trend:'+11.8%'},
+      {label:'계획 달성률',value:'15.8',unit:'%',sub:'연간 목표 570억 기준',highlight:true},
+      {label:'수입 시재 잔액',value:'7,744',unit:'백만원',sub:'2026년 2월 기준'},
+    ],
+    insight:'2026년 1~2월 누적 매출 90억은 전년 동기 대비 11.8% 증가했습니다. 달성률 15.8%는 2개월 진도율 기준을 소폭 하회해 3월 이후 성수기 집중 관리가 필요합니다. 수입 시재 중 외상매출금이 96%를 차지해 거래처별 회수 관리가 핵심 변수입니다.',
+    barChart:{title:'월별 매출 실적 vs 목표',chartType:'mixed',unit:'억',
+      labels:['25.01','25.02','25.03','25.04','25.05','25.06','25.07','25.08','25.09','25.10','25.11','25.12','26.01','26.02'],
+      values:[43.8,33.7,36.2,68.8,51.4,34.9,48.3,48.7,44.6,31.1,39.4,33.0,50.3,39.9],
+      values2:[null,null,null,null,null,null,null,null,null,null,null,null,104,96],label2:'달성률(%)'},
+    pieChart:{title:'수입 유형별 구성',unit:'백만원',
+      labels:['외상매출금','미수금','받을어음','기타'],values:[7451,130,115,48]},
+    table:{title:'수입 거래처 TOP 10',unit:'만원',rows:[
+      {name:'거래처73',value:36740},{name:'거래처150',value:29660},{name:'거래처34',value:23192},
+      {name:'거래처54',value:22644},{name:'거래처7',value:22110},{name:'거래처72',value:16190},
+      {name:'거래처37',value:15122},{name:'거래처21',value:14208},{name:'거래처305',value:13730},{name:'거래처5',value:12530}]},
+    table2:null
+  },
+  '영업사원별_실적현황.xlsx': {
+    title:'영업사원별 실적 현황', accentColor:'#43C59E', layout:'ranking',
+    kpis:[
+      {label:'팀 전체 달성률',value:'87.3',unit:'%',sub:'목표 대비 현황',highlight:true},
+      {label:'월 누적 매출',value:'42.1',unit:'억원',sub:'2026년 3월 기준'},
+      {label:'달성 인원',value:'8',unit:'명',sub:'목표 초과 달성자'},
+      {label:'미달 인원',value:'4',unit:'명',sub:'추가 관리 필요'},
+    ],
+    insight:'영업 1팀의 김민준 사원이 목표 대비 138%로 팀 내 최고 성과를 기록했습니다. 하위 4명은 달성률 70% 미만으로 코칭이 필요한 상황입니다. 전체 팀 달성률 87.3%는 전월(83.1%) 대비 4.2%p 개선되었습니다.',
+    barChart:{title:'영업사원별 달성률',chartType:'hbar',unit:'%',
+      labels:['김민준','박서연','이지우','최예린','정다은','한승우','윤재원','오수빈','장현우','임나경','신동민','홍채원'],
+      values:[138,124,117,112,108,104,99,95,88,76,71,64]},
+    pieChart:null,
+    table:{title:'성과 상위 TOP 6',unit:'%',rows:[
+      {name:'김민준',value:138},{name:'박서연',value:124},{name:'이지우',value:117},
+      {name:'최예린',value:112},{name:'정다은',value:108},{name:'한승우',value:104}]},
+    table2:{title:'달성률 구간별 인원',unit:'명',rows:[
+      {name:'120% 이상 (우수)',value:2},{name:'100~119% (달성)',value:4},
+      {name:'80~99% (근접)',value:3},{name:'80% 미만 (미달)',value:3}]}
+  },
+  '지역별_매출분석.xlsx': {
+    title:'지역별 매출 분석', accentColor:'#E8A838', layout:'comparison',
+    kpis:[
+      {label:'수도권 매출',value:'218',unit:'억원',sub:'전체의 42.4%',highlight:true},
+      {label:'영남권 매출',value:'156',unit:'억원',sub:'전체의 30.3%'},
+      {label:'호남권 매출',value:'87',unit:'억원',sub:'전체의 16.9%'},
+      {label:'기타 지역',value:'53',unit:'억원',sub:'충청·강원·제주'},
+    ],
+    insight:'수도권이 전체 매출의 42.4%를 차지하며 압도적 1위를 유지하고 있습니다. 영남권이 30.3%로 뒤를 잇고 있으며, 전년 대비 5.2%p 성장하며 빠르게 비중이 확대되고 있습니다. 호남권은 16.9%로 성장 잠재력이 높아 추가 영업 자원 투입이 유효할 것으로 분석됩니다.',
+    barChart:{title:'권역별 월별 매출 추이',chartType:'line',unit:'억원',
+      labels:['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+      values:[38.2,32.1,41.5,58.4,46.2,37.8,45.1,47.3,41.8,30.5,36.2,31.2],
+      values2:[26.4,22.3,28.1,41.2,32.5,25.8,31.4,33.2,29.5,21.2,25.4,22.1],label2:'영남권'},
+    pieChart:{title:'지역별 매출 비중',unit:'억원',
+      labels:['수도권','영남권','호남권','충청권','강원·제주'],values:[218,156,87,43,10]},
+    table:{title:'시·도별 매출 상세',unit:'억원',rows:[
+      {name:'서울',value:142},{name:'경기',value:68},{name:'부산',value:78},{name:'경남',value:48},
+      {name:'대구',value:30},{name:'전남',value:52},{name:'광주',value:35},{name:'충남',value:28},{name:'대전',value:15},{name:'기타',value:18}]},
+    table2:null
+  },
+  '고객사별_수주현황.xlsx': {
+    title:'고객사별 수주 현황', accentColor:'#9B82FF', layout:'table_heavy',
+    kpis:[
+      {label:'총 수주액',value:'284',unit:'억원',sub:'2025년 연간 기준'},
+      {label:'수주 건수',value:'1,847',unit:'건',sub:'연간 누계'},
+      {label:'평균 수주 단가',value:'1,538',unit:'만원',sub:'건당 평균'},
+      {label:'상위 3사 집중도',value:'54',unit:'%',sub:'리스크 모니터링 필요',highlight:true},
+    ],
+    insight:'상위 3개 고객사가 전체 수주의 54%를 차지해 집중 리스크가 존재합니다. A고객사의 수주가 전년 대비 32% 증가하며 관계가 강화되고 있으나, C고객사는 11% 감소해 관계 관리가 필요합니다. 미수금 잔액이 42억원으로 전월 대비 6억 증가해 회수 관리를 강화해야 합니다.',
+    barChart:{title:'고객사별 수주액',chartType:'hbar',unit:'억원',
+      labels:['A고객사','B고객사','C고객사','D고객사','E고객사','F고객사','G고객사','H고객사','I고객사','J고객사'],
+      values:[72,56,45,31,24,18,14,11,8,5]},
+    pieChart:null,
+    table:{title:'수주 유형별 현황',unit:'건',rows:[
+      {name:'정기계약',value:824},{name:'신규수주',value:542},
+      {name:'추가발주',value:381},{name:'수의계약',value:100}]},
+    table2:{title:'미수금 현황',unit:'백만원',rows:[
+      {name:'A고객사',value:1840},{name:'C고객사',value:1120},{name:'E고객사',value:820},
+      {name:'B고객사',value:540},{name:'G고객사',value:380},{name:'D고객사',value:280},{name:'기타',value:220}]}
+  },
+  '손익계산서_2025.xlsx': {
+    title:'손익계산서 대시보드', accentColor:'#43C59E', layout:'narrative',
+    kpis:[
+      {label:'연간 매출액',value:'514',unit:'억원',sub:'전년 대비 +8.2%'},
+      {label:'매출총이익',value:'154',unit:'억원',sub:'총이익률 30.0%',highlight:true},
+      {label:'영업이익',value:'61',unit:'억원',sub:'영업이익률 11.9%'},
+      {label:'당기순이익',value:'44',unit:'억원',sub:'순이익률 8.6%'},
+    ],
+    insight:'연간 매출액 514억원으로 전년 대비 8.2% 성장했습니다. 영업이익률 11.9%는 업계 평균(9.4%)을 상회하는 양호한 수준입니다. 다만 판관비가 전년 대비 12.4% 증가해 비용 관리가 필요합니다. 4분기 매출이 하락하며 연간 수익성에 영향을 미쳤습니다.',
+    barChart:{title:'월별 매출·영업이익 추이',chartType:'mixed',unit:'억원',
+      labels:['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+      values:[43.8,33.7,36.2,68.8,51.4,34.9,48.3,48.7,44.6,31.1,39.4,33.0],
+      values2:[5.2,4.0,4.3,8.2,6.1,4.2,5.8,5.8,5.3,3.7,4.7,3.9],label2:'영업이익'},
+    pieChart:{title:'비용 구조 분석',unit:'억원',
+      labels:['매출원가','인건비','판관비','감가상각','기타'],values:[360,48,24,16,6]},
+    table:{title:'분기별 손익 요약',unit:'억원',rows:[
+      {name:'1Q 매출',value:114},{name:'2Q 매출',value:155},{name:'3Q 매출',value:142},{name:'4Q 매출',value:103},
+      {name:'1Q 영업이익',value:13},{name:'2Q 영업이익',value:18},{name:'3Q 영업이익',value:17},{name:'4Q 영업이익',value:13}]},
+    table2:null
+  },
+  '현금흐름_현황.xlsx': {
+    title:'현금흐름 현황', accentColor:'#185FA5', layout:'standard',
+    kpis:[
+      {label:'영업활동 현금',value:'+68',unit:'억원',sub:'전년 대비 +12억',highlight:true},
+      {label:'투자활동 현금',value:'-42',unit:'억원',sub:'설비투자 집중'},
+      {label:'재무활동 현금',value:'-18',unit:'억원',sub:'차입금 상환'},
+      {label:'기말 현금 잔액',value:'124',unit:'억원',sub:'전기 대비 +8억'},
+    ],
+    insight:'영업활동 현금흐름이 68억원으로 양호한 수준을 유지하고 있습니다. 투자활동에서 42억원이 유출되었으나 이는 생산설비 확충을 위한 계획된 투자입니다. 재무활동 현금 유출 18억원은 단기차입금 상환으로, 재무건전성이 개선되고 있습니다.',
+    barChart:{title:'분기별 현금흐름 비교',chartType:'bar',unit:'억원',
+      labels:['1Q 영업','1Q 투자','1Q 재무','2Q 영업','2Q 투자','2Q 재무','3Q 영업','3Q 투자','3Q 재무','4Q 영업','4Q 투자','4Q 재무'],
+      values:[18,-12,-4,22,-14,-5,16,-8,-6,12,-8,-3]},
+    pieChart:{title:'현금 사용처 비율',unit:'억원',
+      labels:['설비투자','원자재 구매','인건비','차입금 상환','기타'],values:[42,124,48,18,12]},
+    table:null, table2:null
+  },
+  '예산대비_실적.xlsx': {
+    title:'예산 대비 실적 현황', accentColor:'#D85A30', layout:'comparison',
+    kpis:[
+      {label:'전사 예산 집행률',value:'68.4',unit:'%',sub:'연간 예산 기준',highlight:true},
+      {label:'총 배정 예산',value:'380',unit:'억원',sub:'2025년 승인 예산'},
+      {label:'집행 완료',value:'260',unit:'억원',sub:'9월 말 기준'},
+      {label:'잔여 예산',value:'120',unit:'억원',sub:'집행 계획 검토 필요'},
+    ],
+    insight:'전사 예산 집행률 68.4%는 9월 기준 계획(75%)을 6.6%p 하회합니다. 마케팅·R&D 부서의 집행률이 각각 52%, 48%로 낮아 하반기 집중 집행이 필요합니다. 생산 부문은 105%를 초과 집행해 예비비 조정이 필요한 상황입니다.',
+    barChart:{title:'부서별 예산 집행률',chartType:'hbar',unit:'%',
+      labels:['생산','영업','경영지원','물류','품질','IT','HR','마케팅','R&D'],
+      values:[105,92,84,78,72,68,61,52,48]},
+    pieChart:null,
+    table:{title:'부서별 예산 배분',unit:'억원',rows:[
+      {name:'생산',value:152},{name:'영업',value:87},{name:'마케팅',value:52},
+      {name:'R&D',value:44},{name:'경영지원',value:29},{name:'물류',value:28},{name:'기타',value:45}]},
+    table2:{title:'집행 상세',unit:'억원',rows:[
+      {name:'생산',value:160},{name:'영업',value:80},{name:'경영지원',value:29},
+      {name:'물류',value:28},{name:'품질',value:18},{name:'IT',value:15},{name:'마케팅',value:27}]}
+  },
+  '외상매출금_관리.xlsx': {
+    title:'외상매출금 관리 현황', accentColor:'#E05252', layout:'mosaic',
+    kpis:[
+      {label:'외상매출금 잔액',value:'7,451',unit:'백만원',sub:'2026년 2월 기준'},
+      {label:'30일 이내',value:'4,820',unit:'백만원',sub:'정상 회수 범위',highlight:true},
+      {label:'30~90일',value:'1,830',unit:'백만원',sub:'모니터링 필요'},
+      {label:'90일 초과',value:'801',unit:'백만원',sub:'즉시 회수 조치 필요'},
+    ],
+    insight:'외상매출금 총 잔액 7,451백만원 중 90일 초과 연체가 801백만원(10.8%)을 차지합니다. 상위 2개 거래처 잔액이 전체의 44%에 집중되어 집중 리스크가 높습니다. 월평균 회수율은 94.2%로 양호하나, 연체 채권에 대한 법적 조치 검토가 필요합니다.',
+    barChart:{title:'연령별 외상매출금 현황',chartType:'bar',unit:'백만원',
+      labels:['30일 이내','31~60일','61~90일','91~120일','120일 초과'],
+      values:[4820,1240,590,420,381]},
+    pieChart:null,
+    table:{title:'연체 구간별 잔액',unit:'백만원',rows:[
+      {name:'정상 (30일 이내)',value:4820},{name:'주의 (31~60일)',value:1240},
+      {name:'경고 (61~90일)',value:590},{name:'위험 (91~120일)',value:420},{name:'최위험 (120일+)',value:381}]},
+    table2:{title:'연체 거래처 현황',unit:'백만원',rows:[
+      {name:'거래처346',value:420},{name:'거래처73',value:181},{name:'거래처22',value:120},
+      {name:'거래처150',value:48},{name:'거래처37',value:32}]}
+  },
+  '제품별_판매현황.xlsx': {
+    title:'제품별 판매 현황', accentColor:'#378ADD', layout:'trend',
+    kpis:[
+      {label:'전체 판매량',value:'28.4',unit:'만 케이스',sub:'2025년 연간 기준'},
+      {label:'최고 판매 제품',value:'참이슬',unit:'',sub:'11.2만 케이스 (39.4%)',highlight:true},
+      {label:'전년 대비 성장',value:'+6.8',unit:'%',sub:'전 제품 평균'},
+      {label:'신제품 비중',value:'8.4',unit:'%',sub:'2024년 이후 출시'},
+    ],
+    insight:'참이슬이 전체 판매의 39.4%를 차지하며 압도적 1위를 유지하고 있습니다. 과일소주 라인업이 전년 대비 28% 성장하며 빠르게 비중을 확대하고 있습니다. 맥주 카테고리는 3.2% 감소해 추가적인 마케팅 전략이 필요합니다.',
+    barChart:{title:'참이슬·과일소주 월별 판매 추이',chartType:'line',unit:'천 케이스',
+      labels:['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+      values:[18.4,14.2,16.8,28.4,22.1,15.2,21.8,23.4,19.6,13.4,17.2,14.3],
+      values2:[4.2,3.8,5.1,7.2,6.8,4.9,6.4,7.1,5.8,3.9,4.8,3.6],label2:'과일소주'},
+    pieChart:{title:'제품군별 판매 비중',unit:'만 케이스',
+      labels:['참이슬','처음처럼','과일소주','맥주','기타'],values:[11.2,6.8,4.8,3.4,2.2]},
+    table:{title:'제품별 판매 실적',unit:'천 케이스',rows:[
+      {name:'참이슬',value:11200},{name:'처음처럼',value:6800},{name:'과일소주',value:4800},
+      {name:'맥주',value:3400},{name:'기타',value:2200}]},
+    table2:null
+  },
+  '재고_현황.xlsx': {
+    title:'재고 현황 분석', accentColor:'#5DCAA5', layout:'table_heavy',
+    kpis:[
+      {label:'총 재고 금액',value:'84',unit:'억원',sub:'2026년 3월 기준'},
+      {label:'재고 회전율',value:'8.2',unit:'회/년',sub:'전년 대비 +0.4회 개선',highlight:true},
+      {label:'과잉 재고',value:'12',unit:'억원',sub:'적정 재고 초과분'},
+      {label:'부족 재고',value:'7',unit:'품목',sub:'발주 긴급 필요 품목'},
+    ],
+    insight:'전체 재고 회전율 8.2회로 전년(7.8회) 대비 개선되었습니다. A등급 원자재 3개 품목이 적정 재고의 180%를 초과해 보관비 부담이 증가하고 있습니다. 부자재 7개 품목은 재고 소진이 임박해 즉시 발주가 필요합니다.',
+    barChart:{title:'품목별 재고 수준 (적정 대비 %)',chartType:'hbar',unit:'%',
+      labels:['원자재A','원자재B','반제품','포장재','부자재A','부자재B','완제품','소모품'],
+      values:[182,165,124,108,94,78,62,45]},
+    pieChart:null,
+    table:{title:'재고 구성 비율',unit:'억원',rows:[
+      {name:'원자재',value:38},{name:'재공품',value:22},{name:'완제품',value:14},
+      {name:'부자재',value:7},{name:'소모품',value:3}]},
+    table2:{title:'긴급 발주 필요 품목',unit:'일 잔여',rows:[
+      {name:'부자재C',value:3},{name:'소모품B',value:5},{name:'포장재A',value:7},
+      {name:'부자재D',value:8},{name:'원자재C',value:10}]}
+  },
+  '생산실적_현황.xlsx': {
+    title:'생산 실적 현황', accentColor:'#9B82FF', layout:'hero_chart',
+    kpis:[
+      {label:'월 평균 생산량',value:'182',unit:'만 병',sub:'2025년 기준'},
+      {label:'평균 가동률',value:'87.4',unit:'%',sub:'목표 90% 대비',highlight:true},
+      {label:'불량률',value:'0.42',unit:'%',sub:'전월 대비 -0.08%p 개선'},
+      {label:'OEE',value:'78.2',unit:'%',sub:'종합 설비 효율'},
+    ],
+    insight:'월 평균 생산량 182만 병으로 연간 목표의 99.3%를 달성하는 양호한 수준입니다. 3공장 가동률이 78%로 타 공장(평균 91%) 대비 낮아 설비 점검이 필요합니다. 불량률은 0.42%로 목표(0.5%) 이내를 유지하고 있습니다.',
+    barChart:{title:'공장별 월별 생산량 (누적)',chartType:'stacked',unit:'만 병',
+      labels:['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+      values:[168,152,178,214,198,172,196,208,184,148,172,154],
+      datasets:[
+        {label:'1공장',values:[86,78,90,118,108,92,102,106,96,80,92,82]},
+        {label:'2공장',values:[82,74,88,96,90,80,94,102,88,68,80,72]},
+      ]},
+    pieChart:{title:'공장별 생산 비중',unit:'만 병',
+      labels:['1공장','2공장','3공장','4공장'],values:[728,964,432,660]},
+    table:{title:'라인별 가동률',unit:'%',rows:[
+      {name:'1공장 A라인',value:94},{name:'1공장 B라인',value:91},{name:'2공장 A라인',value:96},
+      {name:'2공장 B라인',value:89},{name:'3공장 A라인',value:82},{name:'3공장 B라인',value:74}]},
+    table2:null
+  },
+  '품질관리_현황.xlsx': {
+    title:'품질 관리 현황', accentColor:'#E8A838', layout:'timeline',
+    kpis:[
+      {label:'월평균 불량률',value:'0.42',unit:'%',sub:'목표 0.5% 이내',highlight:true},
+      {label:'고객 클레임',value:'18',unit:'건',sub:'2025년 연간 기준'},
+      {label:'공정 불합격률',value:'1.24',unit:'%',sub:'전년 대비 -0.31%p'},
+      {label:'반품율',value:'0.18',unit:'%',sub:'업계 평균 0.25% 하회'},
+    ],
+    insight:'불량률 0.42%는 목표치(0.5%) 이내로 관리되고 있으며 전년 대비 0.08%p 개선되었습니다. 7월 클레임이 5건으로 연중 최다로, 하절기 온도 관리 강화가 필요합니다. 포장 공정에서 전체 불량의 48%가 발생해 집중 개선이 필요합니다.',
+    barChart:{title:'월별 불량률 vs 목표',chartType:'line',unit:'%',
+      labels:['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+      values:[0.48,0.45,0.44,0.41,0.40,0.43,0.52,0.46,0.41,0.38,0.40,0.42],
+      values2:[0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5],label2:'목표 기준선'},
+    pieChart:{title:'불량 유형별 비율',unit:'%',
+      labels:['포장 불량','내용물','라벨','기타'],values:[48,28,16,8]},
+    table:{title:'공정별 불합격 현황',unit:'ppm',rows:[
+      {name:'포장',value:480},{name:'충전',value:280},{name:'세척',value:160},
+      {name:'검사',value:120},{name:'원료투입',value:84}]},
+    table2:null
+  },
+  '인원_현황.xlsx': {
+    title:'인원 현황 대시보드', accentColor:'#5DCAA5', layout:'kpi_focus',
+    kpis:[
+      {label:'전체 임직원',value:'847',unit:'명',sub:'2026년 3월 기준',trend:'+24명 전분기 대비'},
+      {label:'신규 채용',value:'42',unit:'명',sub:'2026년 1분기',trend:'+8명 전년 동기'},
+      {label:'퇴직자',value:'18',unit:'명',sub:'1분기 자발적 퇴직',trend:'-3명 전분기'},
+      {label:'이직률',value:'2.1',unit:'%',sub:'업계 평균 3.8% 하회',highlight:true,trend:'-0.4%p 개선'},
+    ],
+    insight:'전체 임직원 847명으로 전분기 대비 24명 증가했습니다. 이직률 2.1%는 업계 평균(3.8%) 대비 우수한 수준으로 조직 안정성이 높습니다. 생산직 인원이 전체의 52%를 차지하며, IT·디지털 직군을 중심으로 채용이 확대되고 있습니다.',
+    barChart:{title:'조직 역량 레이더 분석',chartType:'radar',unit:'점',
+      labels:['인력 안정성','채용 성과','조직 성장','다양성','유지율','교육 역량'],
+      values:[88,82,76,65,92,78]},
+    pieChart:{title:'직군별 구성 비율',unit:'명',
+      labels:['생산직','영업직','사무직','기술직','연구직'],values:[440,124,158,96,29]},
+    table:{title:'연령대별 인원 분포',unit:'명',rows:[
+      {name:'20대',value:182},{name:'30대',value:298},{name:'40대',value:248},
+      {name:'50대',value:98},{name:'60대 이상',value:21}]},
+    table2:null
+  },
+  '근태_성과현황.xlsx': {
+    title:'근태·성과 현황', accentColor:'#7B5FFF', layout:'sidebar_kpi',
+    kpis:[
+      {label:'평균 KPI 달성률',value:'91.4',unit:'%',sub:'2025년 연간 기준',highlight:true},
+      {label:'연간 잔업 시간',value:'184',unit:'시간/인',sub:'전년 대비 -22시간'},
+      {label:'연차 사용률',value:'78.2',unit:'%',sub:'법정 의무 사용 권고'},
+      {label:'교육 이수율',value:'94.8',unit:'%',sub:'필수 교육 기준'},
+    ],
+    insight:'전사 평균 KPI 달성률 91.4%로 목표(90%) 이상을 달성했습니다. 잔업 시간이 전년 대비 22시간 감소해 일과 생활 균형이 개선되고 있습니다. 연차 사용률 78.2%는 아직 목표(80%)에 미달하며 사용 독려가 필요합니다.',
+    barChart:{title:'부서별 KPI 달성률',chartType:'bar',unit:'%',
+      labels:['R&D','품질','IT','영업','생산','마케팅','물류','HR','경영지원'],
+      values:[98,96,94,93,91,88,86,84,82]},
+    pieChart:null,
+    table:{title:'성과 등급 분포',unit:'명',rows:[
+      {name:'S등급 (120% 이상)',value:82},{name:'A등급 (100~119%)',value:214},
+      {name:'B등급 (80~99%)',value:368},{name:'C등급 (60~79%)',value:142},{name:'D등급 (60% 미만)',value:41}]},
+    table2:{title:'부서별 연차 사용 현황',unit:'일',rows:[
+      {name:'IT',value:18},{name:'마케팅',value:18},{name:'R&D',value:16},
+      {name:'HR',value:16},{name:'영업',value:14},{name:'생산',value:12}]}
+  },
+  '보고서.pptx': {
+    title:'PPT 보고서 분석 결과', accentColor:'#D85A30', layout:'scorecard',
+    kpis:[
+      {label:'추출 슬라이드',value:'14',unit:'장',sub:'수치 데이터 포함'},
+      {label:'식별 KPI',value:'12',unit:'개',sub:'AI가 자동 추출'},
+      {label:'매출 성장률',value:'+12.4',unit:'%',sub:'YoY 기준',highlight:true},
+      {label:'영업이익률',value:'11.9',unit:'%',sub:'업계 평균 상회'},
+      {label:'고객 만족도',value:'87',unit:'점',sub:'전년 대비 +3점'},
+      {label:'분석 신뢰도',value:'94',unit:'%',sub:'데이터 정합성 기준'},
+    ],
+    insight:'PPT 보고서에서 14장의 데이터 슬라이드를 분석해 12개 핵심 지표를 추출했습니다. 전년 대비 매출 12.4% 성장과 수익성 개선이 주요 성과로 확인됩니다. 슬라이드 7~9번에 집중된 비용 구조 데이터는 추가 절감 기회를 시사하고 있습니다.',
+    barChart:{title:'슬라이드별 핵심 수치 추출 현황',chartType:'bar',unit:'개',
+      labels:['슬라이드2','슬라이드3','슬라이드5','슬라이드7','슬라이드8','슬라이드9','슬라이드11','슬라이드12'],
+      values:[4,6,3,8,7,5,4,6]},
+    pieChart:null,
+    table:{title:'추출된 핵심 지표',unit:'',rows:[
+      {name:'매출 성장률(YoY)',value:12},{name:'영업이익률',value:11},{name:'시장 점유율',value:24},
+      {name:'고객 만족도',value:87},{name:'직원 만족도',value:82}]},
+    table2:null
+  },
+  '보고서.docx': {
+    title:'Word 보고서 분석 결과', accentColor:'#185FA5', layout:'kpi_grid',
+    kpis:[
+      {label:'문서 페이지',value:'24',unit:'페이지',sub:'분석 완료'},
+      {label:'식별 테이블',value:'8',unit:'개',sub:'데이터 표 자동 추출'},
+      {label:'핵심 수치',value:'36',unit:'개',sub:'AI가 자동 분류',highlight:true},
+      {label:'요약 정확도',value:'96',unit:'%',sub:'원문 대비 검증'},
+      {label:'주요 섹션',value:'3장·5장',unit:'',sub:'의사결정 핵심 챕터'},
+      {label:'매출 목표',value:'570',unit:'억원',sub:'2026년 계획'},
+    ],
+    insight:'24페이지 Word 보고서에서 8개 표와 36개 핵심 수치를 추출했습니다. 보고서의 주요 주제는 2025년 사업 성과와 2026년 계획으로, 매출 목표 570억원과 신규 사업 추진 계획이 핵심 내용입니다. 3장(전략 방향)과 5장(재무 계획)이 의사결정에 가장 중요한 섹션으로 파악됩니다.',
+    barChart:{title:'챕터별 핵심 정보 밀도',chartType:'hbar',unit:'개',
+      labels:['1장 개요','2장 실적','3장 전략','4장 조직','5장 재무','6장 계획','7장 부록'],
+      values:[4,12,18,6,16,14,8]},
+    pieChart:null,
+    table:{title:'주요 챕터별 핵심 발견',unit:'건',rows:[
+      {name:'2장 실적 분석',value:12},{name:'5장 재무 계획',value:10},{name:'3장 전략 방향',value:8},
+      {name:'6장 실행 계획',value:6},{name:'4장 조직 변화',value:4}]},
+    table2:null
+  },
+
+  /* ── 신규 8개 템플릿 ── */
+
+  // 영업·매출 +2
+  '채널별_매출분석.xlsx': {
+    title:'채널별 매출 분석', accentColor:'#378ADD', layout:'comparison',
+    kpis:[
+      {label:'온라인 매출',value:'128',unit:'억원',sub:'전년 대비 +22%',trend:'+22%',sparkline:[60,72,85,95,110,128]},
+      {label:'오프라인 매출',value:'186',unit:'억원',sub:'전년 대비 +4%',trend:'+4%',sparkline:[165,170,172,178,182,186]},
+      {label:'B2B 매출',value:'214',unit:'억원',sub:'전년 대비 +18%',trend:'+18%',sparkline:[140,155,165,175,200,214]},
+      {label:'해외 매출',value:'42',unit:'억원',sub:'신규 채널 개척',highlight:true,trend:'+61%'},
+    ],
+    insight:'B2B 채널이 매출 37%를 차지하며 1위입니다. 온라인 채널 성장률 22%가 가장 가파르며, 해외 채널은 61% 급성장하고 있습니다. 오프라인 채널은 성장이 둔화되어 디지털 전환 가속이 필요합니다.',
+    barChart:{title:'채널별 분기 매출 비교',chartType:'grouped',unit:'억원',
+      labels:['1분기','2분기','3분기','4분기'],
+      datasets:[
+        {label:'온라인',values:[26,31,35,36]},
+        {label:'오프라인',values:[44,46,48,48]},
+        {label:'B2B',values:[48,52,56,58]},
+        {label:'해외',values:[6,9,12,15]},
+      ]},
+    pieChart:{title:'채널별 매출 비중',unit:'억원',
+      labels:['B2B','오프라인','온라인','해외'],values:[214,186,128,42]},
+    table:{title:'채널별 성장률 현황',unit:'%',rows:[
+      {name:'해외',value:61},{name:'온라인',value:22},{name:'B2B',value:18},{name:'오프라인',value:4}]},
+    table2:null
+  },
+
+  '목표달성_현황.xlsx': {
+    title:'영업 목표 달성 현황', accentColor:'#43C59E', layout:'kpi_focus',
+    kpis:[
+      {label:'전체 달성률',value:'87.3',unit:'%',sub:'2026년 1분기 기준',highlight:true,trend:'+4.2%p',sparkline:[72,75,78,80,83,87]},
+      {label:'달성 인원',value:'42',unit:'명',sub:'전체 48명 중'},
+      {label:'목표 초과',value:'8',unit:'명',sub:'110% 이상 달성'},
+      {label:'미달성 인원',value:'6',unit:'명',sub:'집중 지원 필요'},
+    ],
+    insight:'전체 달성률 87.3%로 전분기 대비 4.2%p 개선됐습니다. 8명은 목표를 초과 달성했고, 미달성 6명에 대한 코칭이 필요합니다. 서울팀 달성률 92%로 최고, 지방팀 78%로 개선 여지가 있습니다.',
+    barChart:{title:'전체 목표 달성률',chartType:'gauge',unit:'%',values:[87,100]},
+    pieChart:{title:'달성 구간별 분포',unit:'명',
+      labels:['110% 이상','100~110%','90~100%','80~90%','80% 미만'],values:[8,10,12,12,6]},
+    table:{title:'팀별 달성률 현황',unit:'%',rows:[
+      {name:'서울팀',value:92},{name:'수도권팀',value:89},{name:'중부팀',value:86},
+      {name:'부산팀',value:84},{name:'지방팀',value:78}]},
+    table2:null
+  },
+
+  // 재무·회계 +1
+  '수익성_분석.xlsx': {
+    title:'수익성 분석 대시보드', accentColor:'#D85A30', layout:'standard',
+    kpis:[
+      {label:'매출총이익률',value:'38.4',unit:'%',sub:'전년 34.2% 대비 개선',highlight:true,trend:'+4.2%p'},
+      {label:'영업이익률',value:'12.8',unit:'%',sub:'업계 평균 9.1% 상회',trend:'+1.3%p'},
+      {label:'순이익률',value:'8.6',unit:'%',sub:'당기순이익 44억원'},
+      {label:'EBITDA',value:'76',unit:'억원',sub:'전년 대비 +18%',sparkline:[52,58,60,64,68,76]},
+    ],
+    insight:'매출총이익률 38.4%는 전년 대비 4.2%p 개선으로 원가 절감 효과가 나타나고 있습니다. 영업이익률 12.8%는 업계 평균 9.1%를 크게 상회하며 수익성이 뛰어납니다. 하반기 원자재 가격 상승 우려가 있어 공급망 관리가 중요합니다.',
+    barChart:{title:'월별 매출 및 이익률 추이',chartType:'mixed',unit:'억원',
+      labels:['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+      values:[38,32,44,56,48,40,52,54,46,36,48,44],
+      values2:[11,9,13,16,14,11,15,16,13,10,14,13],label2:'이익률(%)'},
+    pieChart:{title:'비용 구조 비율',unit:'%',
+      labels:['매출원가','판관비','R&D','기타'],values:[62,18,12,8]},
+    table:{title:'사업부별 이익률',unit:'%',rows:[
+      {name:'소주 부문',value:42},{name:'음료 부문',value:35},{name:'유통 부문',value:28},{name:'기타 부문',value:18}]},
+    table2:null
+  },
+
+  // 운영·생산 +1
+  '설비_가동현황.xlsx': {
+    title:'설비 가동 현황', accentColor:'#9B82FF', layout:'kpi_grid',
+    kpis:[
+      {label:'평균 가동률',value:'88.6',unit:'%',sub:'목표 90% 대비',highlight:true,sparkline:[84,86,87,88,89,89]},
+      {label:'최고 가동 설비',value:'A-2',unit:'라인',sub:'96.4% 달성'},
+      {label:'계획 정비',value:'12',unit:'건',sub:'분기 기준'},
+      {label:'돌발 고장',value:'3',unit:'건',sub:'전분기 7건 대비 감소',trend:'-57%'},
+      {label:'설비 효율',value:'OEE 82',unit:'%',sub:'세계 수준 85% 근접'},
+      {label:'에너지 비용',value:'214',unit:'백만원',sub:'kWh 단가 개선 중'},
+    ],
+    insight:'평균 가동률 88.6%로 목표 90%에 근접했습니다. 돌발 고장이 전분기 7건에서 3건으로 57% 감소해 예방 정비 효과가 나타나고 있습니다. B-1 라인 가동률 78%가 가장 낮아 집중 개선이 필요합니다.',
+    barChart:{title:'전체 평균 가동률',chartType:'gauge',unit:'%',values:[89,100]},
+    pieChart:null,
+    table:{title:'라인별 가동률 현황',unit:'%',rows:[
+      {name:'A-1 라인',value:94},{name:'A-2 라인',value:96},{name:'B-1 라인',value:78},
+      {name:'B-2 라인',value:88},{name:'C-1 라인',value:91},{name:'C-2 라인',value:86}]},
+    table2:null
+  },
+
+  // 인사·조직 +2
+  '채용_현황.xlsx': {
+    title:'채용 파이프라인 현황', accentColor:'#E8A838', layout:'mosaic',
+    kpis:[
+      {label:'채용 공고',value:'24',unit:'건',sub:'2026년 1분기'},
+      {label:'총 지원자',value:'486',unit:'명',sub:'서류 접수 완료'},
+      {label:'최종 합격',value:'18',unit:'명',sub:'목표 20명 대비 90%',highlight:true},
+      {label:'평균 채용 기간',value:'32',unit:'일',sub:'전분기 41일 대비 단축',trend:'-22%'},
+    ],
+    insight:'1분기 18명 채용으로 목표 90%를 달성했습니다. 서류 합격률 38%, 면접 합격률 41%로 전분기 대비 개선됐습니다. 기술직 채용이 어려워 평균 채용 기간이 45일로 전체 평균보다 40% 더 소요됩니다.',
+    barChart:{title:'부서별 채용 단계 현황',chartType:'stacked',unit:'명',
+      labels:['개발','영업','마케팅','생산','경영지원'],
+      datasets:[
+        {label:'서류 합격',values:[28,18,14,32,22]},
+        {label:'면접 합격',values:[12,8,6,14,9]},
+        {label:'최종 합격',values:[5,3,2,5,3]},
+      ]},
+    pieChart:{title:'직군별 채용 비율',unit:'명',
+      labels:['생산직','개발직','영업직','기타'],values:[5,5,3,5]},
+    table:{title:'채용 단계별 전환율',unit:'%',rows:[
+      {name:'지원→서류합격',value:38},{name:'서류→면접합격',value:41},
+      {name:'면접→최종합격',value:36},{name:'전체 합격률',value:3.7}]},
+    table2:null
+  },
+
+  '교육훈련_현황.xlsx': {
+    title:'교육·훈련 현황', accentColor:'#5DCAA5', layout:'comparison',
+    kpis:[
+      {label:'교육 이수율',value:'94.8',unit:'%',sub:'필수 교육 기준',highlight:true,sparkline:[82,86,88,90,93,95]},
+      {label:'인당 교육 시간',value:'42',unit:'시간',sub:'연간 목표 40시간 초과',trend:'+5%'},
+      {label:'교육 만족도',value:'4.3',unit:'/ 5.0',sub:'이용자 자체 평가'},
+      {label:'자격증 취득',value:'28',unit:'건',sub:'2026년 1분기'},
+    ],
+    insight:'교육 이수율 94.8%로 목표를 초과 달성했습니다. 인당 42시간으로 법정 기준을 웃돌며, 만족도 4.3점은 매우 높은 수준입니다. 디지털/AI 역량 교육 수요가 급증하고 있어 커리큘럼 개편이 필요합니다.',
+    barChart:{title:'직군별 역량 수준 (레이더)',chartType:'radar',unit:'점',
+      labels:['직무 전문성','리더십','디지털 역량','커뮤니케이션','문제해결','협업'],
+      values:[82,74,65,88,78,90],values2:[70,70,70,70,70,70],label2:'목표 기준선'},
+    pieChart:{title:'교육 유형별 비중',unit:'%',
+      labels:['직무 전문','법정 의무','리더십','디지털/AI'],values:[42,28,18,12]},
+    table:{title:'부서별 이수율',unit:'%',rows:[
+      {name:'경영지원',value:100},{name:'영업',value:98},{name:'생산',value:96},
+      {name:'R&D',value:94},{name:'마케팅',value:92},{name:'IT',value:88}]},
+    table2:null
+  },
+
+  // 문서 변환 +2
+  'PDF_보고서_분석.pdf': {
+    title:'PDF 보고서 분석 결과', accentColor:'#E05252', layout:'hero_chart',
+    kpis:[
+      {label:'문서 페이지',value:'48',unit:'페이지',sub:'분석 완료'},
+      {label:'추출 수치',value:'127',unit:'개',sub:'자동 인식',highlight:true},
+      {label:'차트/그래프',value:'23',unit:'개',sub:'시각 자료 감지'},
+      {label:'핵심 지표',value:'12',unit:'개',sub:'KPI로 자동 변환'},
+    ],
+    insight:'48페이지 PDF 보고서에서 127개 수치와 23개 시각 자료를 인식했습니다. 2025년 전사 실적 보고서로 판단되며, 매출 514억·영업이익 66억이 핵심 지표입니다. 5장(재무 결과)과 8장(사업 전망)이 가장 정보 밀도가 높습니다.',
+    barChart:{title:'챕터별 정보 밀도 분포',chartType:'bar',unit:'개',
+      labels:['1장','2장','3장','4장','5장','6장','7장','8장','9장','10장'],
+      values:[8,14,12,9,22,11,13,19,10,9]},
+    pieChart:{title:'콘텐츠 유형 구성',unit:'%',
+      labels:['수치·통계','텍스트','표','차트','기타'],values:[38,28,18,12,4]},
+    table:{title:'핵심 지표 요약',unit:'',rows:[
+      {name:'연간 매출',value:514},{name:'영업이익',value:66},{name:'당기순이익',value:44},
+      {name:'임직원 수',value:847},{name:'시장 점유율',value:23}]},
+    table2:null
+  },
+
+  '이메일_보고서_분석.docx': {
+    title:'이메일 보고서 분석 결과', accentColor:'#7B5FFF', layout:'narrative',
+    kpis:[
+      {label:'이메일 수',value:'186',unit:'건',sub:'분석 기간 3개월'},
+      {label:'핵심 안건',value:'34',unit:'건',sub:'AI 자동 분류'},
+      {label:'의사결정 필요',value:'12',unit:'건',sub:'즉시 처리 권고',highlight:true},
+      {label:'후속 조치',value:'28',unit:'건',sub:'담당자 배정 필요'},
+    ],
+    insight:'3개월간 186건 이메일에서 34건의 핵심 안건을 추출했습니다. 12건이 의사결정이 필요하며 이 중 4건은 긴급도가 높습니다. 거래처 관련 이슈가 전체의 42%로 가장 많고, 계약·법무 관련 이슈는 신속한 검토가 필요합니다.',
+    barChart:{title:'월별 이메일 유형 분포',chartType:'grouped',unit:'건',
+      labels:['1월','2월','3월'],
+      datasets:[
+        {label:'일반 보고',values:[38,42,36]},
+        {label:'의사결정 요청',values:[14,10,10]},
+        {label:'긴급 안건',values:[4,5,3]},
+      ]},
+    pieChart:null,
+    table:{title:'안건 유형별 현황',unit:'건',rows:[
+      {name:'거래처 이슈',value:14},{name:'계약·법무',value:8},{name:'예산 승인',value:6},
+      {name:'인사·조직',value:4},{name:'기타',value:2}]},
+    table2:null
+  }
+};
+
+function startSample(fname, ftype){
+  const data = SAMPLE_DB[fname];
+  lastFname = fname; lastFtype = ftype;
+  lastExtractedText = null; isSampleDashboard = true;
+  setupAnView(fname, ftype, '샘플 데이터 구조 확인 완료');
+  goView('analyzing');
+  // 진행 애니메이션 후 즉시 렌더링
+  const timers = [];
+  const sched = [
+    {step:2, pct:45, runAt:500,  doneAt:1100, sub:'주요 수치·지표를 집계했습니다'},
+    {step:3, pct:78, runAt:1300, doneAt:1900, sub:'차트 구성을 결정했습니다'},
+    {step:4, pct:100,runAt:2100, doneAt:2700, sub:'AI 분석 의견 작성 완료'},
+  ];
+  sched.forEach(s=>{
+    timers.push(setTimeout(()=>setStep(s.step,'run'), s.runAt));
+    timers.push(setTimeout(()=>{setStep(s.step,'done',s.sub);setProg(s.pct);}, s.doneAt));
+  });
+  setTimeout(()=>{
+    clearInterval(window._tipTimer);
+    renderDynamic(data || {title:fname, kpis:[], insight:'데이터를 불러오는 중입니다.', barChart:null, pieChart:null, table:null}, fname);
+  }, 3000);
+}
+
+function setupAnView(fname,ftype,s1sub){
+  document.getElementById('an-ic').textContent=F_IC[ftype]||'📗';
+  document.getElementById('an-name').textContent=fname;
+  document.getElementById('an-type').textContent=ftype+' 파일 · 업로드 완료';
+  document.getElementById('s1-sub').textContent=s1sub;
+  resetSteps();
+  // 팁 순환
+  let ti=0;document.getElementById('an-tip').textContent=TIPS[ti];
+  window._tipTimer=setInterval(()=>{ti=(ti+1)%TIPS.length;document.getElementById('an-tip').textContent=TIPS[ti];},4000);
+}
+
+/* ─── Claude API — JSON 대시보드 데이터 요청 ─── */
+async function runAnalysis(fname, ftype, data, excludeLayout=null, reanalyze=false, imageBase64=null){
+  // 진행 단계 애니메이션
+  const sched=[
+    {step:2, pct:40, runAt:700,  doneAt:1400, sub:'주요 수치·지표를 집계했습니다'},
+    {step:3, pct:70, runAt:1800, doneAt:2600, sub:'차트 구성을 결정했습니다'},
+    {step:4, pct:90, runAt:3000, doneAt:null,  sub:'AI 분석 의견을 작성하고 있습니다'},
+  ];
+  const timers=[];
+  sched.forEach(s=>{
+    timers.push(setTimeout(()=>setStep(s.step,'run'), s.runAt));
+    if(s.doneAt) timers.push(setTimeout(()=>{setStep(s.step,'done',s.sub);setProg(s.pct);}, s.doneAt));
+  });
+
+  const SYSTEM=`당신은 경영 데이터 분석 전문가입니다.
+주어진 데이터를 분석해 아래 JSON 형식으로만 응답하세요.
+절대로 JSON 외의 텍스트, 마크다운 코드블록, 설명을 포함하지 마세요.
+
+응답 형식:
+{
+  "title": "대시보드 제목 (20자 이내)",
+  "layout": "standard|trend|ranking|comparison|table_heavy|compact|kpi_focus|narrative|scorecard|timeline|hero_chart|sidebar_kpi|mosaic|kpi_grid",
+  "kpis": [{"label":"","value":"","unit":"","sub":"","highlight":false,"trend":"","sparkline":[]}],
+  "insight": "핵심 인사이트 3~4문장. 중요 수치·위험·기회 포함.",
+  "barChart": {"title":"","chartType":"bar|hbar|line|area|mixed|stacked|radar|gauge|grouped","unit":"","labels":[],"values":[],"values2":[],"label2":"","datasets":[{"label":"","values":[]}]},
+  "pieChart": {"title":"","unit":"","labels":[],"values":[]},
+  "table": {"title":"","unit":"","rows":[{"name":"","value":0}]},
+  "table2": {"title":"","unit":"","rows":[{"name":"","value":0}]}
+}
+
+레이아웃 선택 기준:
+- standard: 다양한 지표 혼재 (바차트+도넛+테이블)
+- trend: 시간 흐름이 핵심 (풀너비 라인/혼합 → 도넛+테이블)
+- ranking: 순위 비교 (풀너비 가로막대 → 테이블2개)
+- comparison: 동시 비교 (바+도넛+미니순위 3분할)
+- table_heavy: 명세 데이터 많을 때 (차트+테이블 → 테이블2)
+- compact: 요약 (KPI 6개+차트+테이블)
+- kpi_focus: 지표 자체가 핵심 (대형 KPI → 차트 보조)
+- narrative: 분석이 핵심 (차트60% | 인사이트+테이블40%)
+- scorecard: 다수 지표 수치 (KPI 8개+테이블, 차트 없음)
+- timeline: 시계열+명세 (큰 차트 → 테이블2개 나란히)
+- hero_chart: 차트가 스토리를 이끌 때 (차트 먼저 → KPI → 인사이트)
+- sidebar_kpi: KPI를 왼쪽 세로 열로 배치 (시각 구조 완전히 다름)
+- mosaic: 데이터 먼저 해석 나중 (KPI → 차트들 → 인사이트 → 테이블)
+- kpi_grid: KPI 8개 대형 + 차트 보조 (지표가 8개 이상일 때)
+
+차트 유형 선택 기준:
+- bar: 항목별 수치 비교 (기본)
+- hbar: 항목이 많거나 이름이 길 때 (8개 이상 권장)
+- line: 시간 흐름 (보조 계열 없을 때)
+- area: 시간 흐름 + 면적 강조 (cumulative, 성장 시각화)
+- mixed: 막대+라인 혼합 (달성률/비율 y2축 표시)
+- gauge: 목표 달성률·진행률 (values[0]=달성값, values[1]=최대값, 색상 자동 80%↑초록/60↑주황/미만빨강)
+- grouped: 여러 계열 나란히 비교 (datasets[] 사용, 채널별·부서별·연도별 비교)
+- kpis[].sparkline: 최근 5~8개 수치 배열, 넣으면 KPI 카드 안에 미니 추세선 자동 표시
+
+규칙:
+- kpis: compact는 6개, 나머지는 4개
+- table2: ranking/table_heavy에서 두 번째 테이블 데이터 (없으면 null)
+- barChart.values2·label2: mixed/line에서 보조 계열 (없으면 생략)
+- 데이터가 없는 필드는 null 또는 빈 배열
+- 모든 텍스트는 한국어
+- value는 반드시 숫자 (테이블 rows)
+- barChart·pieChart labels·values 길이 동일, 최대 14개/6개${excludeLayout ? `\n- 반드시 "${excludeLayout}" 이외의 레이아웃을 선택할 것` : ''}`;
+
+  // 이미지 Vision 분석: 이미지 + 텍스트 프롬프트를 함께 전달
+  const buildContent = (msg) => {
+    if(!imageBase64) return msg;
+    // 이미지 MIME 타입 추론
+    const ext = fname.split('.').pop().toLowerCase();
+    const mime = ext==='png'?'image/png':ext==='gif'?'image/gif':ext==='webp'?'image/webp':'image/jpeg';
+    return [
+      { type:'image', source:{ type:'base64', media_type:mime, data:imageBase64 } },
+      { type:'text', text: msg }
+    ];
+  };
+
+  const userMsg = reanalyze
+    ? `같은 파일을 다시 분석하되, 이전과 다른 데이터 포인트·지표·인사이트에 집중해 새로운 대시보드를 만들어주세요. 이전에 강조한 내용과 겹치지 않도록 다른 관점(기간별 추이, 항목별 비교, 비율 분석 등)으로 접근하세요. "${excludeLayout}" 레이아웃은 사용하지 마세요:\n\n파일명: ${fname}\n파일 유형: ${ftype}\n\n${data}`
+    : excludeLayout
+    ? `다음 데이터를 분석해 대시보드 JSON을 생성해주세요. "${excludeLayout}" 레이아웃은 이미 사용했으므로 반드시 다른 레이아웃으로 구성하세요:\n\n파일명: ${fname}\n파일 유형: ${ftype}\n\n${data}`
+    : imageBase64
+    ? `이 이미지(${ftype} 파일)에서 경영 데이터·수치·차트·표를 모두 읽어 대시보드 JSON을 생성해주세요. 이미지에 보이는 모든 수치와 항목을 최대한 추출하세요:\n\n파일명: ${fname}`
+    : `다음 데이터를 분석해 대시보드 JSON을 생성해주세요:\n\n파일명: ${fname}\n파일 유형: ${ftype}\n\n${data}`;
+
+  let dbJson = null;
+  const MAX_RETRY = 3;
+  for(let attempt = 1; attempt <= MAX_RETRY; attempt++){
+    try{
+      if(attempt > 1){
+        setStep(4,'run');
+        document.getElementById('an-tip').textContent = `⟳  연결 재시도 중입니다... (${attempt}/${MAX_RETRY}회)`;
+        await new Promise(r=>setTimeout(r, 1200 * attempt));
+      }
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:2000,
+          system: SYSTEM,
+          messages:[{role:'user', content: buildContent(userMsg)}]
+        })
+      });
+      if(res.ok){
+        const d = await res.json();
+        const raw = d.content?.find(b=>b.type==='text')?.text || '';
+        const clean = raw.replace(/```json|```/g,'').trim();
+        dbJson = JSON.parse(clean);
+        break; // 성공 시 루프 탈출
+      } else {
+        console.warn(`API 오류 (${attempt}/${MAX_RETRY}): HTTP ${res.status}`);
+        if(attempt === MAX_RETRY) throw new Error(`HTTP ${res.status}`);
+      }
+    } catch(e){
+      console.warn(`API/파싱 오류 (${attempt}/${MAX_RETRY}):`, e);
+      if(attempt === MAX_RETRY){
+        // 최종 실패: 분석 화면에 오류 표시 후 업로드 화면 복귀
+        timers.forEach(clearTimeout);
+        clearInterval(window._tipTimer);
+        document.getElementById('an-tip').textContent = '⚠️  AI 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+        [2,3,4].forEach(i=>setStep(i,'wait'));
+        setProg(0);
+        setTimeout(()=>{
+          goView('empty');
+          toast('⚠️  분석에 실패했습니다. 파일을 다시 올려 주세요.', 4000);
+        }, 2500);
+        return;
+      }
+    }
+  }
+
+  // 진행 완료
+  timers.forEach(clearTimeout);
+  clearInterval(window._tipTimer);
+  [2,3,4].forEach(i => setStep(i,'done',
+    i===2?'주요 수치·지표를 집계했습니다':
+    i===3?'차트 구성을 결정했습니다':'AI 분석 의견 작성 완료'));
+  setProg(100);
+
+  document.getElementById('db-src-name').textContent = fname;
+  const now = new Date();
+  document.getElementById('db-date').textContent =
+    `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} 생성`;
+
+  setTimeout(()=>{
+    if(dbJson) renderDynamic(dbJson, fname);
+    else { goView('empty'); toast('⚠️  분석 결과를 처리하지 못했습니다. 다시 시도해 주세요.', 4000); }
+  }, 600);
+}
+
+/* ─── 대시보드 메타 업데이트 (타이틀 + 사이드바) ─── */
+function setDashboardMeta(title, fname, skipHistory=false){
+  const displayTitle = title || fname;
+  document.getElementById('t-title').textContent = displayTitle;
+  document.getElementById('t-sub').textContent = '파일 데이터 기반 · AI 자동 생성';
+  document.getElementById('db-src-name').textContent = fname;
+  const now = new Date();
+  document.getElementById('db-date').textContent =
+    `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} 생성`;
+  if(skipHistory) return;
+  // 사이드바 히스토리에 추가
+  const hist = document.getElementById('hist-db');
+  const existing = hist.querySelector('.lnb-recent.active');
+  if(existing) existing.classList.remove('active');
+  const newItem = document.createElement('div');
+  newItem.className = 'lnb-recent active';
+  newItem.textContent = displayTitle;
+  newItem.onclick = () => {
+    lnbSelRecent(newItem);
+    const data = SAMPLE_DB[fname];
+    if(data) renderDynamic(data, fname, true);
+    else goView('dashboard');
+  };
+  hist.insertBefore(newItem, hist.firstChild);
+  // localStorage에 저장 (브라우저 종료 후에도 유지, 최대 20개)
+  try {
+    const saved = JSON.parse(localStorage.getItem('db-history')||'[]');
+    const entry = {title: displayTitle, fname, isSample: isSampleDashboard};
+    const deduped = [entry, ...saved.filter(e=>e.fname!==fname)].slice(0, 20);
+    localStorage.setItem('db-history', JSON.stringify(deduped));
+  } catch(e) {}
+}
+
+/* ─── 공통 렌더 유틸 ─── */
+function esc(str){ // HTML 인젝션 방어
+  return String(str??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+const PIE_COLORS=['#185FA5','#5DCAA5','#85B7EB','#E8A838','#D85A30','#9B82FF'];
+
+function insightHTML(j){
+  return `<div class="insight" style="margin-bottom:12px;">
+    <div class="insight-ic">✦</div>
+    <div style="min-width:0;">
+      <div class="insight-lbl">AI 분석 의견</div>
+      <div class="insight-txt">${escMd(j.insight||'')}</div>
+      <div class="i-chips">
+        <span class="i-chip" onclick="askQ('이 데이터의 핵심 위험 요소가 뭐야?')">핵심 위험 요소</span>
+        <span class="i-chip" onclick="askQ('가장 개선이 필요한 부분은 어디야?')">개선 포인트</span>
+        <span class="i-chip" onclick="askQ('임원 보고용 한 페이지 요약을 만들어줘')">임원 보고 요약</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function kpiHTML(kpis, accent, cls='kpi-strip'){
+  return `<div class="${cls}" style="margin-bottom:14px;">${(kpis||[]).map((k,i)=>{
+    const td = k.trend ? (k.trend.startsWith('+')?'up':k.trend.startsWith('-')?'dn':'flat') : '';
+    const trendHtml = k.trend ? `<div class="kpi-trend ${td}">${k.trend}</div>` : '';
+    const sparkHtml = k.sparkline?.length
+      ? `<canvas id="sp-${i}" style="width:100%;height:30px;margin-top:5px;display:block;"></canvas>` : '';
+    return `<div class="kpi">
+      <div class="kpi-lbl">${esc(k.label)}</div>
+      <div class="kpi-val" ${k.highlight?`style="color:${accent}"`:''}>${esc(k.value)}<span class="kpi-unit">${esc(k.unit||'')}</span></div>
+      <div class="kpi-sub">${esc(k.sub||'')}</div>
+      ${trendHtml}${sparkHtml}
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function drawSparklines(kpis, accent){
+  (kpis||[]).forEach((k,i)=>{
+    if(!k.sparkline?.length) return;
+    const el = document.getElementById(`sp-${i}`);
+    if(!el) return;
+    // 기존 인스턴스 파괴 (뷰 전환 시 중복 방지)
+    if(CI[`sp-${i}`]){ CI[`sp-${i}`].destroy(); delete CI[`sp-${i}`]; }
+    const vals = k.sparkline;
+    const rising = vals[vals.length-1] >= vals[0];
+    const color = rising ? '#43C59E' : '#E05252';
+    mk(`sp-${i}`, {
+      type:'line',
+      data:{labels:vals.map((_,j)=>j), datasets:[{
+        data:vals, borderColor:color, backgroundColor:color+'22',
+        fill:true, pointRadius:0, borderWidth:1.5, tension:0.4
+      }]},
+      options:{responsive:true, maintainAspectRatio:false, animation:{duration:0},
+        plugins:{legend:{display:false}, tooltip:{enabled:false}},
+        scales:{x:{display:false}, y:{display:false}}}
+    });
+  });
+}
+
+function chartCardHTML(id, title, sub, h=200){
+  return `<div class="card"><div class="card-title">${esc(title)}</div><div class="card-sub">${esc(sub||'')}</div>
+    <div style="height:${h}px;position:relative;"><canvas id="${id}"></canvas></div>
+    <div class="chart-click-hint">💬 항목을 클릭하면 AI에게 바로 질문할 수 있어요</div></div>`;
+}
+
+function pieCardHTML(id, title, pc){
+  const legs = (pc.labels||[]).map((l,i)=>`<span class="leg"><span class="leg-dot" style="background:${PIE_COLORS[i]}"></span>${esc(l)}</span>`).join('');
+  return `<div class="card"><div class="card-title">${esc(title)}</div>
+    <div style="height:145px;position:relative;"><canvas id="${id}"></canvas></div>
+    <div class="leg-row" style="margin-top:10px;gap:5px 11px;">${legs}</div>
+    <div class="chart-click-hint">💬 항목을 클릭하면 AI에게 바로 질문할 수 있어요</div></div>`;
+}
+
+function tableCardHTML(id, title, unit){
+  return `<div class="card"><div class="card-title">${esc(title||'상세 현황')}</div>
+    <table class="tbl"><thead><tr>
+      <th style="width:44px">순위</th><th>항목</th>
+      <th class="r" style="width:90px">값${unit?` (${esc(unit)})`:''}</th>
+      <th style="width:80px">비율</th>
+    </tr></thead><tbody id="${id}"></tbody></table></div>`;
+}
+
+function fillTableEl(id, rows, accent, unit){
+  const tb = document.getElementById(id); if(!tb) return;
+  if(!rows?.length){ tb.closest('.card').style.display='none'; return; }
+  const mx = Math.max(...rows.map(r=>Math.abs(r.value||0)));
+  tb.innerHTML = rows.map((r,i)=>{
+    const p = mx>0 ? Math.round(Math.abs(r.value||0)/mx*100) : 0;
+    return `<tr>
+      <td><span class="rk">${i+1}</span></td>
+      <td style="color:var(--txt)">${esc(r.name)}</td>
+      <td class="r">${(r.value||0).toLocaleString()}${esc(unit||'')}</td>
+      <td><div class="bar-bg"><div class="bar-fill" style="width:${p}%;background:${accent}"></div></div></td>
+    </tr>`;
+  }).join('');
+}
+
+function drawChartEl(id, bc, accent){
+  if(!bc?.labels?.length) return;
+  const isHbar=bc.chartType==='hbar', isLine=bc.chartType==='line';
+  const isMixed=bc.chartType==='mixed', isArea=bc.chartType==='area';
+  const isStacked=bc.chartType==='stacked', isRadar=bc.chartType==='radar';
+  const isGauge=bc.chartType==='gauge', isGrouped=bc.chartType==='grouped';
+  let cfg;
+
+  if(isHbar){
+    cfg={type:'bar',data:{labels:bc.labels,datasets:[{label:bc.title,data:bc.values,
+      backgroundColor:accent+'CC',borderRadius:3,borderSkipped:false}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw}${bc.unit||''}`}}},
+        scales:{x:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}${bc.unit||''}`},grid:{color:GR()}},
+                y:{ticks:{color:TK(),font:{size:9.5}},grid:{color:GR()}}}}};
+
+  } else if(isLine){
+    const ds=[{label:bc.title,data:bc.values,borderColor:accent,backgroundColor:accent+'18',
+      fill:true,pointRadius:3,pointBackgroundColor:accent,borderWidth:2,tension:0.3}];
+    if(bc.values2) ds.push({label:bc.label2||'',data:bc.values2,borderColor:'#E8A838',
+      backgroundColor:'transparent',fill:false,pointRadius:3,pointBackgroundColor:'#E8A838',
+      borderWidth:2,tension:0.3,borderDash:[4,3]});
+    cfg={type:'line',data:{labels:bc.labels,datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:!!bc.values2,labels:{color:TK(),font:{size:10},boxWidth:8}}},
+        scales:{x:{ticks:{color:TK(),font:{size:9.5},autoSkip:false,maxRotation:45},grid:{color:GR()}},
+                y:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}${bc.unit||''}`},grid:{color:GR()}}}}};
+
+  } else if(isArea){
+    // 그라디언트 영역 차트 — line과 구분: 더 두꺼운 선 + 강한 fill
+    const ds2=[{label:bc.title,data:bc.values,borderColor:accent,
+      backgroundColor:accent+'30',fill:true,pointRadius:4,pointBackgroundColor:accent,
+      borderWidth:2.5,tension:0.4,pointHoverRadius:6}];
+    if(bc.values2) ds2.push({label:bc.label2||'',data:bc.values2,borderColor:'#43C59E',
+      backgroundColor:'#43C59E20',fill:true,pointRadius:3,pointBackgroundColor:'#43C59E',
+      borderWidth:2,tension:0.4,borderDash:[5,3]});
+    cfg={type:'line',data:{labels:bc.labels,datasets:ds2},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:!!bc.values2,labels:{color:TK(),font:{size:10},boxWidth:8}},
+          filler:{propagate:false}},
+        scales:{x:{ticks:{color:TK(),font:{size:9.5},autoSkip:false,maxRotation:45},grid:{color:GR()}},
+                y:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}${bc.unit||''}`},grid:{color:GR()}}}}};
+
+  } else if(isStacked){
+    // 누적 막대 — datasets[] 배열 사용
+    const STACK_COLORS=['#378ADD','#43C59E','#E8A838','#D85A30','#9B82FF','#5DCAA5'];
+    const rawDs = bc.datasets?.length ? bc.datasets : [{label:bc.title,values:bc.values}];
+    const stackDs = rawDs.map((d,i)=>({
+      label:d.label||bc.title, data:d.values||bc.values,
+      backgroundColor:STACK_COLORS[i%STACK_COLORS.length]+'CC',
+      borderColor:STACK_COLORS[i%STACK_COLORS.length], borderWidth:0.5,
+      borderRadius:i===rawDs.length-1?3:0, stack:'s'
+    }));
+    cfg={type:'bar',data:{labels:bc.labels,datasets:stackDs},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,labels:{color:TK(),font:{size:10},boxWidth:8}}},
+        scales:{x:{ticks:{color:TK(),font:{size:9.5},autoSkip:false,maxRotation:45},grid:{color:GR()},stacked:true},
+                y:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}${bc.unit||''}`},grid:{color:GR()},stacked:true}}}};
+
+  } else if(isRadar){
+    const isMob = window.innerWidth <= 768;
+    const lblSize = isMob ? 8.5 : 10.5;
+    const tickSize = isMob ? 7.5 : 9;
+    const ptRadius = isMob ? 3 : 4;
+    cfg={type:'radar',data:{labels:bc.labels,datasets:[{
+      label:bc.title, data:bc.values,
+      borderColor:accent, backgroundColor:accent+'28',
+      pointBackgroundColor:accent, pointRadius:ptRadius, borderWidth:2,
+    },
+    ...(bc.values2?[{label:bc.label2||'',data:bc.values2,
+      borderColor:'#E8A838',backgroundColor:'#E8A83820',
+      pointBackgroundColor:'#E8A838',pointRadius:ptRadius-1,borderWidth:2}]:[])
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:!!bc.values2,labels:{color:TK(),font:{size:10},boxWidth:8}}},
+      scales:{r:{ticks:{color:TK(),font:{size:tickSize},backdropColor:'transparent',
+        maxTicksLimit:4,
+        callback:v=>`${v}${bc.unit||''}`},
+        grid:{color:GR()},angleLines:{color:GR()},
+        pointLabels:{color:TK(),font:{size:lblSize},
+          callback:(lbl)=>isMob&&lbl.length>6?lbl.slice(0,6)+'…':lbl}}}}};
+
+  } else if(isMixed){
+    cfg={type:'bar',data:{labels:bc.labels,datasets:[
+      {label:bc.title,data:bc.values,backgroundColor:accent+'BB',order:2,borderRadius:3,borderSkipped:false},
+      {label:bc.label2||'',data:bc.values2,type:'line',borderColor:'#43C59E',backgroundColor:'transparent',
+        pointRadius:3,pointBackgroundColor:'#43C59E',borderWidth:2,yAxisID:'y2',order:1,spanGaps:false}
+    ]},options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{color:TK(),font:{size:10},boxWidth:8}},
+        tooltip:{callbacks:{label:c=>c.datasetIndex===0?`${c.raw}${bc.unit||''}`:c.raw!=null?`${bc.label2}: ${c.raw}%`:''}}},
+      scales:{x:{ticks:{color:TK(),font:{size:9.5},autoSkip:false,maxRotation:45},grid:{color:GR()}},
+              y:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}${bc.unit||''}`},grid:{color:GR()}},
+              y2:{position:'right',ticks:{color:'#43C59E',font:{size:9.5},callback:v=>`${v}%`},grid:{display:false},min:0,max:140}}}};
+
+  } else if(isGauge){
+    const val = bc.values?.[0] ?? 0;
+    const max = bc.values?.[1] ?? 100;
+    const pct = Math.min(100, Math.round((val/max)*100));
+    const gColor = pct>=80?'#43C59E':pct>=60?'#E8A838':'#E05252';
+    const isMob = window.innerWidth <= 768;
+    cfg={type:'doughnut',
+      data:{datasets:[{data:[pct,100-pct],
+        backgroundColor:[gColor,isLight?'rgba(0,0,0,0.07)':'rgba(255,255,255,0.08)'],
+        borderWidth:0,hoverBackgroundColor:[gColor,'transparent']}]},
+      plugins:[{id:'gaugeLabel',afterDraw(chart){
+        const {ctx,chartArea:{left,right,top,bottom}}=chart;
+        const w=right-left;
+        const cx=(left+right)/2;
+        // 모바일: 텍스트를 게이지 중앙 하단에, PC: 약간 위
+        const cy = isMob ? bottom - w*0.02 : bottom - (bottom-top)*0.05;
+        const pctFontSz = Math.max(isMob?18:20, Math.floor(w*(isMob?0.18:0.22)));
+        const subFontSz = Math.max(isMob?9:10, Math.floor(w*(isMob?0.08:0.10)));
+        ctx.save();ctx.textAlign='center';
+        ctx.fillStyle=gColor;
+        ctx.font=`bold ${pctFontSz}px Arial`;
+        ctx.fillText(`${pct}%`,cx,cy-(isMob?4:6));
+        ctx.fillStyle=isLight?'#5A5A72':'#9896A8';
+        ctx.font=`${subFontSz}px Arial`;
+        // 모바일에서 긴 텍스트 줄임
+        const subTxt = isMob
+          ? `${val.toLocaleString()} / ${max.toLocaleString()}${bc.unit||''}`
+          : `${val.toLocaleString()}${bc.unit||''} / ${max.toLocaleString()}${bc.unit||''}`;
+        ctx.fillText(subTxt,cx,cy+(isMob?14:18));
+        ctx.restore();
+      }}],
+      options:{circumference:180,rotation:-90,cutout:'72%',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{enabled:false}},
+        onClick:()=>{askQ(`${bc.title||'달성률'} ${pct}%의 의미와 개선 방향을 분석해줘`);openQA();},
+        onHover:(e)=>{e.native.target.style.cursor='pointer';}}};
+    mk(id,cfg); return;
+
+  } else if(isGrouped){
+    const GRP=['#378ADD','#43C59E','#E8A838','#D85A30','#9B82FF','#5DCAA5'];
+    const rawDs=bc.datasets?.length?bc.datasets:[{label:bc.title,values:bc.values}];
+    const grpDs=rawDs.map((d,i)=>({label:d.label||bc.title,data:d.values||bc.values,
+      backgroundColor:GRP[i%GRP.length]+'CC',borderRadius:3,borderSkipped:false}));
+    cfg={type:'bar',data:{labels:bc.labels,datasets:grpDs},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,labels:{color:TK(),font:{size:10},boxWidth:8}},
+          tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw}${bc.unit||''}`}}},
+        scales:{x:{ticks:{color:TK(),font:{size:9.5},autoSkip:false,maxRotation:45},grid:{color:GR()}},
+                y:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}${bc.unit||''}`},grid:{color:GR()}}}}};
+
+  } else if(!isHbar&&!isLine&&!isArea&&!isStacked&&!isRadar&&!isMixed){
+    cfg={type:'bar',data:{labels:bc.labels,datasets:[{label:bc.title,data:bc.values,
+      backgroundColor:bc.values.map(v=>v<0?'rgba(224,82,82,0.75)':accent+'BB'),
+      borderRadius:3,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw}${bc.unit||''}`}}},
+        scales:{x:{ticks:{color:TK(),font:{size:9.5},autoSkip:false,maxRotation:45},grid:{color:GR()}},
+                y:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}${bc.unit||''}`},grid:{color:GR()}}}}};
+  }
+
+  // 차트 클릭 → Q&A 자동 질문
+  const onChartClick = (e, elements) => {
+    if(!elements.length) return;
+    const idx = elements[0].index;
+    const lbl = bc.labels[idx];
+    const val = isStacked ? '' : `${bc.values[idx]}${bc.unit||''}`;
+    askQ(`${lbl}${val?' : '+val:''} — 이 수치의 의미와 개선 방향을 분석해줘`);
+    openQA();
+  };
+  cfg.options.onClick = onChartClick;
+  cfg.options.onHover = (e, el) => { e.native.target.style.cursor = el.length ? 'pointer' : 'default'; };
+  mk(id, cfg);
+}
+
+function drawPieEl(id, pc){
+  if(!pc?.labels?.length) return;
+  mk(id,{type:'doughnut',data:{labels:pc.labels,datasets:[{data:pc.values,
+    backgroundColor:PIE_COLORS.slice(0,pc.labels.length),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
+      onClick:(e, elements)=>{
+        if(!elements.length) return;
+        const idx=elements[0].index;
+        askQ(`${pc.labels[idx]} 항목(${pc.values[idx].toLocaleString()}${pc.unit||''})에 대해 자세히 분석해줘`);
+        openQA();
+      },
+      onHover:(e,el)=>{ e.native.target.style.cursor=el.length?'pointer':'default'; },
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString()}${pc.unit||''}`}}}}});
+}
+
+/* ─── 차트 높이 헬퍼 ─── */
+function chartH(bc, defaultH=200){
+  const isMob = window.innerWidth <= 768;
+  if(bc?.chartType==='gauge') return isMob ? 160 : 210;
+  if(bc?.chartType==='radar') return isMob ? 200 : 240;
+  if(bc?.chartType==='hbar')  return Math.max(isMob?140:180, (bc?.labels?.length||8)*(isMob?22:26));
+  return isMob ? Math.min(defaultH, 180) : defaultH;
+}
+
+/* ─── 6가지 레이아웃 빌더 ─── */
+function buildLayout_standard(j, accent){
+  const hasPie = j.pieChart?.labels?.length > 0;
+  const barH = j.barChart?.chartType==='hbar' ? Math.max(180,(j.barChart?.labels?.length||8)*26) : 200;
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(j.kpis,accent) + insightHTML(j) +
+    (hasPie
+      ? `<div class="g2" style="margin-bottom:12px;">
+          ${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', barH)}
+          ${pieCardHTML('c-pie', j.pieChart.title||'구성 비율', j.pieChart)}
+        </div>`
+      : `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', barH)}</div>`
+    ) +
+    (j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : '');
+  drawChartEl('c-main', j.barChart, accent);
+  if(hasPie) drawPieEl('c-pie', j.pieChart);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+}
+
+function buildLayout_trend(j, accent){
+  const hasPie = j.pieChart?.labels?.length > 0;
+  const hasBar = j.barChart?.labels?.length > 0;
+  const h = j.barChart?.chartType==='hbar' ? Math.max(180,(j.barChart?.labels?.length||8)*26) : 210;
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(j.kpis,accent) + insightHTML(j) +
+    (hasBar ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'추이', '', h)}</div>` : '') +
+    (hasPie && j.table?.rows?.length
+      ? `<div class="g-40-60" style="margin-bottom:12px;">${pieCardHTML('c-pie', j.pieChart.title||'구성 비율', j.pieChart)}${tableCardHTML('t-main', j.table.title, j.table.unit)}</div>`
+      : hasPie
+        ? `<div class="g-full" style="margin-bottom:12px;">${pieCardHTML('c-pie', j.pieChart.title||'구성 비율', j.pieChart)}</div>${j.table?.rows?.length?tableCardHTML('t-main', j.table.title, j.table.unit):''}`
+        : j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : ''
+    );
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  if(hasPie) drawPieEl('c-pie', j.pieChart);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+}
+
+function buildLayout_ranking(j, accent){
+  const hasBar = j.barChart?.labels?.length > 0;
+  const hasT2 = j.table2?.rows?.length > 0;
+  const h = Math.max(180,(j.barChart?.labels?.length||10)*26);
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(j.kpis,accent) + insightHTML(j) +
+    (hasBar ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'순위 현황', '', h)}</div>` : '') +
+    (j.table?.rows?.length && hasT2
+      ? `<div class="g2eq" style="margin-bottom:12px;">${tableCardHTML('t-main', j.table.title, j.table.unit)}${tableCardHTML('t-main2', j.table2.title, j.table2.unit)}</div>`
+      : j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : ''
+    );
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+  if(hasT2) fillTableEl('t-main2', j.table2?.rows, accent, j.table2?.unit);
+}
+
+function buildLayout_comparison(j, accent){
+  const hasBar = j.barChart?.labels?.length > 0;
+  const hasPie = j.pieChart?.labels?.length > 0;
+  const miniRows = (j.table?.rows||[]).slice(0,5);
+  const miniHTML = `<div class="card">
+    <div class="card-title">${esc(j.table?.title||'항목 순위')}</div>
+    <div class="mini-rank">${miniRows.map((r,i)=>`
+      <div class="mini-rank-item">
+        <span class="mini-rank-no">${i+1}</span>
+        <span class="mini-rank-name">${esc(r.name)}</span>
+        <span class="mini-rank-val">${(r.value||0).toLocaleString()}${esc(j.table?.unit||'')}</span>
+      </div>`).join('')}
+    </div>
+  </div>`;
+  const barH = j.barChart?.chartType==='hbar'?Math.max(160,(j.barChart?.labels?.length||6)*26):180;
+  // 유효한 패널만 모아서 flex로 균등 분할 — 빈 div 없음
+  const panels = [
+    hasBar ? chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', barH) : null,
+    hasPie ? pieCardHTML('c-pie', j.pieChart.title||'구성 비율', j.pieChart) : null,
+    miniRows.length ? miniHTML : null,
+  ].filter(Boolean);
+  const colStyle = `display:grid;grid-template-columns:repeat(${panels.length},1fr);gap:12px;margin-bottom:12px;`;
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(j.kpis,accent) + insightHTML(j) +
+    `<div style="${colStyle}">${panels.join('')}</div>` +
+    (j.table?.rows?.length > 5 ? tableCardHTML('t-main', j.table.title+' (전체)', j.table.unit) : '');
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  if(hasPie) drawPieEl('c-pie', j.pieChart);
+  if(j.table?.rows?.length > 5) fillTableEl('t-main', j.table.rows, accent, j.table?.unit);
+}
+
+function buildLayout_table_heavy(j, accent){
+  const hasBar = j.barChart?.labels?.length > 0;
+  const hasT2 = j.table2?.rows?.length > 0;
+  const h = j.barChart?.chartType==='hbar' ? Math.max(180,(j.barChart?.labels?.length||8)*26) : 200;
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(j.kpis,accent) + insightHTML(j) +
+    (hasBar && j.table?.rows?.length
+      ? `<div class="g2eq" style="margin-bottom:12px;">${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', h)}${tableCardHTML('t-main', j.table.title, j.table.unit)}</div>`
+      : hasBar
+        ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', h)}</div>`
+        : j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : ''
+    ) +
+    (hasT2 ? `<div class="g-full">${tableCardHTML('t-main2', j.table2.title, j.table2.unit)}</div>` : '');
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  if(j.table?.rows?.length) fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+  if(hasT2) fillTableEl('t-main2', j.table2?.rows, accent, j.table2?.unit);
+}
+
+function buildLayout_compact(j, accent){
+  const hasBar = j.barChart?.labels?.length > 0;
+  const kpis = j.kpis||[];
+  const h = j.barChart?.chartType==='hbar' ? Math.max(180,(j.barChart?.labels?.length||8)*26) : 200;
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(kpis, accent, kpis.length>=5?'kpi-strip-6':'kpi-strip') + insightHTML(j) +
+    (hasBar ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'주요 현황', '', h)}</div>` : '') +
+    (j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : '');
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+}
+
+/* ─── 추가 4가지 레이아웃 ─── */
+
+/* 7. kpi_focus: KPI 강조형
+   KPI(4, 대형) → 풀너비 차트(낮게) → [도넛(1/3) | 테이블(2/3)]
+   지표 자체가 핵심이고 차트는 보조일 때 */
+function buildLayout_kpi_focus(j, accent){
+  const hasBar = j.barChart?.labels?.length > 0;
+  const hasPie = j.pieChart?.labels?.length > 0;
+  const h = j.barChart?.chartType==='hbar' ? Math.max(150,(j.barChart?.labels?.length||8)*22) : 160;
+  const kpiLarge = `<div class="kpi-strip kpi-strip-large" style="margin-bottom:14px;">${(j.kpis||[]).map(k=>`
+    <div class="kpi kpi-lg">
+      <div class="kpi-lbl">${esc(k.label)}</div>
+      <div class="kpi-val kpi-val-lg" ${k.highlight?`style="color:${accent}"`:''}>${esc(k.value)}<span class="kpi-unit">${esc(k.unit||'')}</span></div>
+      <div class="kpi-sub">${esc(k.sub||'')}</div>
+    </div>`).join('')}</div>`;
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiLarge + insightHTML(j) +
+    (hasBar ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'', '', h)}</div>` : '') +
+    (hasPie && j.table?.rows?.length
+      ? `<div class="g-40-60" style="margin-bottom:12px;">${pieCardHTML('c-pie', j.pieChart.title||'', j.pieChart)}${tableCardHTML('t-main', j.table.title, j.table.unit)}</div>`
+      : j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : ''
+    );
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  if(hasPie) drawPieEl('c-pie', j.pieChart);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+}
+
+/* 8. narrative: 분석 텍스트 강조형
+   KPI(4) → [바차트(60%) | 인사이트+테이블(40%)] 나란히
+   인사이트(분석 텍스트)와 시각화가 동등하게 중요할 때 */
+function buildLayout_narrative(j, accent){
+  const hasBar = j.barChart?.labels?.length > 0;
+  const h = j.barChart?.chartType==='hbar' ? Math.max(200,(j.barChart?.labels?.length||8)*26) : 220;
+  const insideInsight = `<div class="card" style="display:flex;flex-direction:column;gap:14px;">
+    <div>
+      <div class="insight-lbl">✦ AI 분석 의견</div>
+      <div class="insight-txt" style="margin-top:6px;">${escMd(j.insight||'')}</div>
+    </div>
+    ${j.table?.rows?.length ? `<div>
+      <div class="card-title" style="margin-bottom:8px;">${esc(j.table.title||'상세 현황')}</div>
+      <table class="tbl"><thead><tr>
+        <th style="width:44px">순위</th><th>항목</th>
+        <th class="r" style="width:90px">값${j.table.unit?` (${esc(j.table.unit)})`:''}</th>
+        <th style="width:80px">비율</th>
+      </tr></thead><tbody id="t-main"></tbody></table>
+    </div>` : ''}
+  </div>`;
+  const tab = document.getElementById('tab-overview');
+  // barChart 있으면 60:40 분할, 없으면 인사이트+테이블 풀너비
+  tab.innerHTML = kpiHTML(j.kpis, accent) +
+    (hasBar
+      ? `<div class="g-60-40" style="margin-bottom:12px;">
+          ${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', h)}
+          ${insideInsight}
+        </div>`
+      : `<div class="g-full" style="margin-bottom:12px;">${insideInsight}</div>`
+    );
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+}
+
+/* 9. scorecard: 스코어카드형
+   KPI(8개, 2행 4열) → 인사이트 → 테이블(풀너비)
+   차트 없이 다수 지표와 명세를 한눈에 볼 때 */
+function buildLayout_scorecard(j, accent){
+  const kpis = j.kpis||[];
+  const cls = kpis.length > 4 ? 'kpi-strip-6' : 'kpi-strip';
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(kpis, accent, cls) + insightHTML(j) +
+    (j.table?.rows?.length
+      ? `<div class="g-full">${tableCardHTML('t-main', j.table.title, j.table.unit)}</div>`
+      : '') +
+    (j.table2?.rows?.length
+      ? `<div class="g-full">${tableCardHTML('t-main2', j.table2.title, j.table2.unit)}</div>`
+      : '');
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+  fillTableEl('t-main2', j.table2?.rows, accent, j.table2?.unit);
+}
+
+/* 10. timeline: 시계열 강조형
+   KPI(4) → 인사이트 → 풀너비 차트(큰 높이, 시계열) → [테이블(1/2) | 테이블2(1/2)]
+   시간 흐름이 핵심이고 명세 데이터도 충분히 보여줘야 할 때 */
+function buildLayout_timeline(j, accent){
+  const hasBar = j.barChart?.labels?.length > 0;
+  const hasT2  = j.table2?.rows?.length > 0;
+  const h = 260; // 시계열 강조를 위해 크게
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(j.kpis, accent) + insightHTML(j) +
+    (hasBar ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'추이', '', h)}</div>` : '') +
+    (j.table?.rows?.length && hasT2
+      ? `<div class="g2eq" style="margin-bottom:12px;">${tableCardHTML('t-main', j.table.title, j.table.unit)}${tableCardHTML('t-main2', j.table2.title, j.table2.unit)}</div>`
+      : j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : ''
+    );
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+  if(hasT2) fillTableEl('t-main2', j.table2?.rows, accent, j.table2?.unit);
+}
+
+/* ─── 추가 4가지 레이아웃 (신규) ─── */
+
+/* 11. hero_chart: 차트가 먼저 — 시각이 스토리를 이끄는 구조
+   풀너비 차트(큰) → KPI(4) → 인사이트 → 테이블 */
+function buildLayout_hero_chart(j, accent){
+  const hasBar = j.barChart?.labels?.length > 0;
+  const h = j.barChart?.chartType==='radar' ? 240
+           : j.barChart?.chartType==='hbar' ? Math.max(200,(j.barChart?.labels?.length||8)*26) : 260;
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML =
+    (hasBar ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'핵심 지표', '', h)}</div>` : '') +
+    kpiHTML(j.kpis, accent) +
+    insightHTML(j) +
+    (j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : '');
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+}
+
+/* 12. sidebar_kpi: KPI가 왼쪽 세로 열 — 완전히 다른 시각 구조
+   [LEFT: KPI 세로 배열 | RIGHT: 인사이트 + 차트 + 테이블] */
+function buildLayout_sidebar_kpi(j, accent){
+  const hasBar = j.barChart?.labels?.length > 0;
+  const h = j.barChart?.chartType==='hbar' ? Math.max(160,(j.barChart?.labels?.length||8)*22)
+           : j.barChart?.chartType==='radar' ? 220 : 190;
+  const kpiSide = `<div class="kpi-sidebar">${(j.kpis||[]).map(k=>{
+    const td = k.trend?(k.trend.startsWith('+')?'up':k.trend.startsWith('-')?'dn':'flat'):'';
+    return `<div class="kpi">
+      <div class="kpi-lbl">${esc(k.label)}</div>
+      <div class="kpi-val" ${k.highlight?`style="color:${accent}"`:''}>${esc(k.value)}<span class="kpi-unit">${esc(k.unit||'')}</span></div>
+      <div class="kpi-sub">${esc(k.sub||'')}</div>
+      ${k.trend?`<div class="kpi-trend ${td}">${esc(k.trend)}</div>`:''}
+    </div>`;
+  }).join('')}</div>`;
+  const rightCol = `<div style="display:flex;flex-direction:column;gap:12px;min-width:0;">
+    ${insightHTML(j)}
+    ${hasBar ? chartCardHTML('c-main', j.barChart?.title||'', '', h) : ''}
+    ${j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : ''}
+  </div>`;
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = `<div class="g-sidebar-kpi">${kpiSide}${rightCol}</div>`;
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+}
+
+/* 13. mosaic: 인사이트가 차트 아래 — 데이터 먼저, 해석 나중 구조
+   KPI(4) → [바차트|도넛] → 인사이트 → 테이블 */
+function buildLayout_mosaic(j, accent){
+  const hasPie = j.pieChart?.labels?.length > 0;
+  const hasBar = j.barChart?.labels?.length > 0;
+  const barH = j.barChart?.chartType==='hbar' ? Math.max(180,(j.barChart?.labels?.length||8)*26)
+              : j.barChart?.chartType==='radar' ? 220 : 200;
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(j.kpis, accent) +
+    (hasPie && hasBar
+      ? `<div class="g2" style="margin-bottom:12px;">
+          ${chartCardHTML('c-main', j.barChart?.title||'', '', barH)}
+          ${pieCardHTML('c-pie', j.pieChart.title||'', j.pieChart)}
+        </div>`
+      : hasBar ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'', '', barH)}</div>`
+      : hasPie ? `<div class="g-full">${pieCardHTML('c-pie', j.pieChart.title||'', j.pieChart)}</div>` : ''
+    ) +
+    insightHTML(j) +
+    (j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : '');
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  if(hasPie) drawPieEl('c-pie', j.pieChart);
+  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+}
+
+/* 14. kpi_grid: KPI 8개 대형 그리드가 주인공 — 스코어카드와 달리 차트도 있음
+   KPI×8 (4+4) → [바차트|도넛] → 인사이트 */
+function buildLayout_kpi_grid(j, accent){
+  const kpis = j.kpis||[];
+  const hasPie = j.pieChart?.labels?.length > 0;
+  const hasBar = j.barChart?.labels?.length > 0;
+  const barH = j.barChart?.chartType==='radar' ? 210 : 190;
+  const kpiCls = kpis.length > 5 ? 'kpi-strip-8' : 'kpi-strip-6';
+  const tab = document.getElementById('tab-overview');
+  tab.innerHTML = kpiHTML(kpis, accent, kpiCls) +
+    (hasBar || hasPie
+      ? `<div class="${hasBar&&hasPie?'g2':'g-full'}" style="margin-bottom:12px;">
+          ${hasBar ? chartCardHTML('c-main', j.barChart?.title||'', '', barH) : ''}
+          ${hasPie ? pieCardHTML('c-pie', j.pieChart.title||'', j.pieChart) : ''}
+        </div>` : '') +
+    insightHTML(j);
+  if(hasBar) drawChartEl('c-main', j.barChart, accent);
+  if(hasPie) drawPieEl('c-pie', j.pieChart);
+}
+
+/* ─── 동적 대시보드 렌더링 (레이아웃 디스패처) ─── */
+function renderDynamic(j, fname, skipHistory=false){
+  isDynamicMode = true;
+  document.querySelectorAll('.db-tab').forEach((t,i)=>{
+    t.classList.toggle('active',i===0);
+    t.style.display = i===0 ? '' : 'none';
+  });
+  document.querySelectorAll('.tab-c').forEach((t,i)=>t.classList.toggle('active',i===0));
+
+  const accent = j.accentColor || '#378ADD';
+  const layout = j.layout || 'standard';
+
+  // 레이아웃별 빌더 호출 (14종)
+  const builders = {
+    standard:    buildLayout_standard,
+    trend:       buildLayout_trend,
+    ranking:     buildLayout_ranking,
+    comparison:  buildLayout_comparison,
+    table_heavy: buildLayout_table_heavy,
+    compact:     buildLayout_compact,
+    kpi_focus:   buildLayout_kpi_focus,
+    narrative:   buildLayout_narrative,
+    scorecard:   buildLayout_scorecard,
+    timeline:    buildLayout_timeline,
+    hero_chart:  buildLayout_hero_chart,
+    sidebar_kpi: buildLayout_sidebar_kpi,
+    mosaic:      buildLayout_mosaic,
+    kpi_grid:    buildLayout_kpi_grid,
+  };
+  (builders[layout] || buildLayout_standard)(j, accent);
+  // 스파크라인 — DOM이 완전히 업데이트된 다음 프레임에 렌더링
+  requestAnimationFrame(() => drawSparklines(j.kpis, accent));
+
+  goView('dashboard');
+  setDashboardMeta(j.title, fname, skipHistory);
+  lastDashboardJson = j;
+  // AI 재분석 버튼 — 실제 파일 업로드 시에만 노출
+  const rb = document.getElementById('btn-reshuffle');
+  if(rb) rb.style.display = isSampleDashboard ? 'none' : '';
+  const lp = document.getElementById('layout-picker');
+  if(lp) lp.style.display = '';
+  toast('✅  대시보드를 완성했습니다!', 3500);
+  dbContext = `파일: ${fname}\n${j.insight||''}\nKPI: ${(j.kpis||[]).map(k=>`${k.label} ${k.value}${k.unit||''}`).join(', ')}`;
+
+  // Q&A 패널 초기화
+  firstQ = true;
+  const qaBody = document.getElementById('qa-body');
+  const chips = document.getElementById('qa-chips');
+  const chipsLbl = qaBody?.querySelector('.qa-chips-lbl');
+  if(chips) chips.style.display = '';
+  if(chipsLbl) chipsLbl.style.display = '';
+  if(qaBody) Array.from(qaBody.children).forEach(c=>{ if(c.classList.contains('qa-msg')) c.remove(); });
+}
+
+/* ─── STEP CONTROL ─── */
+const STEP_SUBS_RUN={2:'수치·지표를 계산하고 있습니다...',3:'차트 구성을 결정하고 있습니다...',4:'AI가 분석 의견을 작성하고 있습니다...'};
+function resetSteps(){
+  [1,2,3,4].forEach(i=>{
+    const el=document.getElementById('s'+i);if(!el)return;
+    const dot=el.querySelector('.step-dot'),badge=el.querySelector('.step-badge');
+    if(i===1){dot.className='step-dot sd-done';dot.textContent='✓';badge.className='step-badge sb-done';badge.textContent='완료';}
+    else{dot.className='step-dot sd-wait';dot.textContent='○';badge.className='step-badge sb-wait';badge.textContent='대기 중';
+      if(STEP_SUBS_RUN[i])el.querySelector('.step-sub').textContent=STEP_SUBS_RUN[i].replace('...','');}
+  });
+  document.getElementById('prog-fill').style.width='15%';document.getElementById('prog-pct').textContent='15%';
+}
+function setStep(i,state,sub){
+  const el=document.getElementById('s'+i);if(!el)return;
+  const dot=el.querySelector('.step-dot'),badge=el.querySelector('.step-badge'),s=el.querySelector('.step-sub');
+  if(state==='run'){dot.className='step-dot sd-run';dot.textContent='◉';badge.className='step-badge sb-run';badge.textContent='처리 중';if(STEP_SUBS_RUN[i])s.textContent=STEP_SUBS_RUN[i];}
+  else if(state==='done'){dot.className='step-dot sd-done';dot.textContent='✓';badge.className='step-badge sb-done';badge.textContent='완료';if(sub)s.textContent=sub;}
+}
+function setProg(p){document.getElementById('prog-fill').style.width=p+'%';document.getElementById('prog-pct').textContent=p+'%';}
+
+/* ─── DRAG DROP ─── */
+(function(){
+  const z = document.getElementById('up-zone');
+  z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag'); });
+  z.addEventListener('dragleave', e => { if(!z.contains(e.relatedTarget)) z.classList.remove('drag'); });
+  z.addEventListener('drop', e => {
+    e.preventDefault(); z.classList.remove('drag');
+    if(e.dataTransfer.files.length) stageFiles(e.dataTransfer.files);
+  });
+})();
+
+/* ─── CHARTS ─── */
+const CI={};
+function mk(id,cfg){if(CI[id]){CI[id].destroy();delete CI[id];}const c=document.getElementById(id);if(!c)return;CI[id]=new Chart(c,cfg);}
+const GR=()=>isLight?'rgba(0,0,0,0.06)':'rgba(255,255,255,0.05)';
+const TK=()=>isLight?'#9898B0':'#5E5C6E';
+
+function initCharts(){
+  const DN={responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw.toLocaleString()}백만원`}}}};
+  mk('c-sales-line',{type:'line',data:{labels:M,datasets:[{label:'매출 실적',data:ACT,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.08)',fill:true,pointRadius:3,pointBackgroundColor:'#378ADD',borderWidth:2,tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:TK(),font:{size:9.5},autoSkip:false,maxRotation:45},grid:{color:GR()}},y:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}억`},grid:{color:GR()}}}}});
+  mk('c-product',{type:'doughnut',data:{labels:['제품군1','제품군2','제품군3','수출','기타'],datasets:[{data:[42,28,18,8,4],backgroundColor:['#378ADD','#43C59E','#E8A838','#D85A30','#5E5C6E'],borderWidth:0}]},
+    options:{...DN,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}%`}}}}});
+  mk('c-qoq',{type:'bar',data:{labels:['25 Q1','25 Q2','25 Q3','25 Q4'],datasets:[{label:'전분기比',data:[-3.1,28.4,-8.2,-17.6],backgroundColor:['rgba(224,82,82,0.7)','rgba(67,197,158,0.7)','rgba(224,82,82,0.7)','rgba(224,82,82,0.7)'],borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`전분기比: ${c.raw>0?'+':''}${c.raw}%`}}},scales:{x:{ticks:{color:TK(),font:{size:10.5}},grid:{color:GR()}},y:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}%`},grid:{color:GR()}}}}});
+  mk('c-cf-in',{type:'doughnut',data:{labels:['외상매출금','미수금','받을어음','기타'],datasets:[{data:[7451,130,115,48],backgroundColor:['#185FA5','#5DCAA5','#85B7EB','#0F6E56'],borderWidth:0}]},options:DN});
+  mk('c-cf-out',{type:'doughnut',data:{labels:['공병보증금','지급어음','법인카드','이자·기타'],datasets:[{data:[188,184,26,44],backgroundColor:['#D85A30','#993C1D','#F0997B','#FAC775'],borderWidth:0}]},options:DN});
+}
+function fillTbl(id,rows,color){
+  const tb=document.getElementById(id);if(!tb)return;tb.innerHTML='';
+  const mx=rows[0].v;
+  rows.forEach((r,i)=>{
+    const p=Math.round(r.v/mx*100),tr=document.createElement('tr');
+    tr.innerHTML=`<td><span class="rk">${i+1}</span></td><td style="color:var(--txt)">${r.n}</td><td class="r">${r.v.toLocaleString()}</td><td><div class="bar-bg"><div class="bar-fill" style="width:${p}%;background:${color}"></div></div></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+/* ─── TAB ─── */
+function switchTab(el,name){
+  document.querySelectorAll('.db-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-c').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('db-scroll').scrollTop=0;
+  // 동적 대시보드 모드에서는 부속 탭에 하드코딩 데이터 렌더링 금지
+  if(name!=='overview' && !isDynamicMode) setTimeout(initCharts,50);
+}
+
+/* ─── 모바일 LNB / QA 토글 ─── */
+function toggleLNB(){
+  const lnb = document.querySelector('.lnb');
+  const ov  = document.getElementById('mob-overlay');
+  const open = lnb.classList.toggle('mob-open');
+  ov.classList.toggle('active', open);
+}
+function toggleQA(){
+  const qa = document.querySelector('.qa');
+  qa.classList.toggle('mob-open');
+}
+function openQA(){
+  // 모바일에서만 동작
+  if(window.innerWidth <= 768) document.querySelector('.qa').classList.add('mob-open');
+}
+
+/* ─── 마크다운 렌더링 (인사이트 텍스트용) ─── */
+function escMd(text){
+  let t = esc(text);
+  // **bold** → 강조
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:var(--txt)">$1</strong>');
+  // ▲ → 초록, ▼ → 빨강
+  t = t.replace(/▲/g, '<span style="color:var(--green)">▲</span>');
+  t = t.replace(/▼/g, '<span style="color:var(--red)">▼</span>');
+  // +숫자% → 초록, -숫자% → 빨강
+  t = t.replace(/(\+[\d,.]+%)/g, '<span style="color:var(--green)">$1</span>');
+  t = t.replace(/([-][\d,.]+%)/g, '<span style="color:var(--red)">$1</span>');
+  return t;
+}
+
+/* ─── 제목 인라인 편집 ─── */
+function startTitleEdit(){
+  const el = document.getElementById('t-title');
+  if(el.querySelector('input')) return;
+  const cur = el.textContent;
+  el.innerHTML = `<input id="title-edit-inp" value="${esc(cur)}"
+    style="background:transparent;border:none;border-bottom:1.5px solid var(--acc);
+    color:var(--txt);font:inherit;font-size:inherit;font-weight:inherit;width:220px;outline:none;padding:0;"
+    onblur="finishTitleEdit(this)" onkeydown="if(event.key==='Enter')this.blur()">`;
+  document.getElementById('title-edit-inp').select();
+}
+function finishTitleEdit(inp){
+  const v = inp.value.trim() || '인사이트 대시보드';
+  document.getElementById('t-title').textContent = v;
+  const active = document.querySelector('#hist-db .lnb-recent.active');
+  if(active) active.textContent = v;
+}
+
+/* ─── 레이아웃 선택 드롭다운 ─── */
+const LAYOUT_META = [
+  {id:'standard',    ic:'▦',  name:'기본'},
+  {id:'trend',       ic:'📈', name:'추이'},
+  {id:'ranking',     ic:'🏆', name:'순위'},
+  {id:'comparison',  ic:'⚖️', name:'비교'},
+  {id:'table_heavy', ic:'📋', name:'명세'},
+  {id:'compact',     ic:'⬜', name:'요약'},
+  {id:'kpi_focus',   ic:'🎯', name:'지표 강조'},
+  {id:'narrative',   ic:'📝', name:'분석 서술'},
+  {id:'scorecard',   ic:'📊', name:'스코어카드'},
+  {id:'timeline',    ic:'📅', name:'시계열'},
+  {id:'hero_chart',  ic:'🖼', name:'차트 우선'},
+  {id:'sidebar_kpi', ic:'◧',  name:'사이드 KPI'},
+  {id:'mosaic',      ic:'⊞',  name:'모자이크'},
+  {id:'kpi_grid',    ic:'🔢', name:'KPI 그리드'},
+];
+
+function populateLayoutPicker(){
+  const dd = document.getElementById('layout-dd');
+  if(!dd) return;
+  const cur = lastDashboardJson?.layout || 'standard';
+  const items = LAYOUT_META.map(m=>{
+    const isCur = m.id === cur;
+    return `<div
+      onclick="selectLayout('${m.id}')"
+      onmouseover="this.style.background='var(--bg3)';this.style.color='var(--txt)'"
+      onmouseout="this.style.background='${isCur?'var(--acc-bg)':'transparent'}';this.style.color='${isCur?'var(--acc2)':'var(--txt2)'}'"
+      style="
+        display:flex;align-items:center;justify-content:space-between;
+        padding:9px 14px;cursor:pointer;font-size:13px;
+        color:${isCur?'var(--acc2)':'var(--txt2)'};
+        font-weight:${isCur?'700':'400'};
+        background:${isCur?'var(--acc-bg)':'transparent'};
+        border-left:3px solid ${isCur?'var(--acc)':'transparent'};
+      ">
+      <span>${m.name}</span>
+      ${isCur?'<span style="font-size:11px;color:var(--acc2);">✓</span>':''}
+    </div>`;
+  }).join('');
+
+  dd.innerHTML = `
+    <div style="padding:11px 14px 7px;font-size:10.5px;color:var(--txt3);font-weight:700;letter-spacing:0.06em;">뷰 선택</div>
+    <div style="height:1px;background:var(--bd);margin-bottom:5px;"></div>
+    ${items}
+    <div style="height:6px;"></div>`;
+}
+
+function toggleLayoutPicker(){
+  const dd  = document.getElementById('layout-dd');
+  const btn = document.getElementById('btn-layout-pick');
+  if(!dd || !btn) return;
+
+  // 이미 열려있으면 닫기
+  if(dd.style.display === 'block'){ dd.style.display = 'none'; return; }
+
+  // 버튼 위치 기준으로 드롭다운 위치 설정
+  const r   = btn.getBoundingClientRect();
+  const ddW = 280;
+  let left  = r.right - ddW;
+  if(left < 8) left = 8;
+  if(left + ddW > window.innerWidth - 8) left = window.innerWidth - ddW - 8;
+
+  dd.style.top    = (r.bottom + 5) + 'px';
+  dd.style.left   = left + 'px';
+
+  populateLayoutPicker();
+  dd.style.display = 'block';
+}
+
+function selectLayout(layout){
+  document.getElementById('layout-dd').style.display = 'none';
+  if(!lastDashboardJson){ toast('⚠️ 먼저 대시보드를 생성해 주세요.'); return; }
+  if(layout === lastDashboardJson.layout){
+    toast('현재 적용 중인 레이아웃입니다.', 2000); return;
+  }
+  const newJ = Object.assign({}, lastDashboardJson, {layout});
+  renderDynamic(newJ, lastFname, true);
+  const meta = LAYOUT_META.find(m=>m.id===layout);
+  toast(`✅ "${meta?.name||layout}" 뷰로 변경됐습니다.`, 2500);
+}
+
+// 드롭다운 외부 클릭·스크롤·리사이즈 시 닫기
+document.addEventListener('click', e=>{
+  const dd  = document.getElementById('layout-dd');
+  const btn = document.getElementById('btn-layout-pick');
+  if(dd && btn && !btn.contains(e.target) && !dd.contains(e.target)){
+    dd.style.display = 'none';
+  }
+});
+window.addEventListener('scroll', ()=>{ const d=document.getElementById('layout-dd'); if(d) d.style.display='none'; }, true);
+window.addEventListener('resize', ()=>{ const d=document.getElementById('layout-dd'); if(d) d.style.display='none'; });
+
+/* ─── AI 재분석 (실제 파일 전용) ─── */
+const ALL_LAYOUTS = ['standard','trend','ranking','comparison','table_heavy','compact',
+                     'kpi_focus','narrative','scorecard','timeline',
+                     'hero_chart','sidebar_kpi','mosaic','kpi_grid'];
+
+async function reshuffleDashboard(){
+  if(!lastDashboardJson || isSampleDashboard){
+    toast('⚠️ AI 재분석은 직접 업로드한 파일에서만 사용할 수 있습니다.'); return;
+  }
+  if(!lastExtractedText){
+    toast('⚠️ 원본 파일 데이터가 없습니다. 파일을 다시 올려 주세요.'); return;
+  }
+
+  // 현재와 다른 레이아웃 후보
+  const currentLayout = lastDashboardJson.layout || 'standard';
+  const candidates = ALL_LAYOUTS.filter(l => l !== currentLayout);
+  const newLayout = candidates[Math.floor(Math.random() * candidates.length)];
+
+  setupAnView(lastFname, lastFtype, '원본 파일을 다른 관점으로 재분석하는 중입니다...');
+  goView('analyzing');
+  // 재분석 전용 프롬프트 — 이전과 다른 데이터 포인트·지표 추출 요청
+  runAnalysis(lastFname, lastFtype, lastExtractedText, newLayout, true);
+}
+
+function layoutLabel(l){
+  const map = {
+    standard:'기본', trend:'추이', ranking:'순위',
+    comparison:'비교', table_heavy:'명세', compact:'요약',
+    kpi_focus:'지표 강조', narrative:'분석 서술', scorecard:'스코어카드', timeline:'시계열',
+    hero_chart:'차트 우선', sidebar_kpi:'사이드 KPI', mosaic:'모자이크', kpi_grid:'KPI 그리드'
+  };
+  return map[l] || l;
+}
+
+/* ─── Q&A (동적 컨텍스트 사용) ─── */
+let isDynamicMode = false;
+let dbContext = '';
+// 재구성 기능용 상태
+let lastDashboardJson  = null;  // 현재 대시보드 JSON
+let lastFname          = null;
+let lastFtype          = null;
+let lastExtractedText  = null;  // 실제 파일 텍스트 (API 재호출용)
+let isSampleDashboard  = false; // 샘플 템플릿 여부
+let firstQ=true;
+async function askQ(q){
+  const body=document.getElementById('qa-body');
+  if(firstQ){
+    const chips=document.getElementById('qa-chips'),lbl=body.querySelector('.qa-chips-lbl');
+    if(chips)chips.style.display='none';if(lbl)lbl.style.display='none';firstQ=false;
+  }
+  const uMsg=document.createElement('div');uMsg.className='qa-msg u';uMsg.textContent=q;body.appendChild(uMsg);
+  const aMsg=document.createElement('div');aMsg.className='qa-msg a';
+  aMsg.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+  body.appendChild(aMsg);body.scrollTop=body.scrollHeight;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:800,
+        system:`당신은 경영 데이터 분석 어시스턴트입니다. 다음 데이터를 기반으로 질문에 답하세요:\n\n${dbContext}\n\n답변은 한국어로, 쉽고 친절하게, 3~5문장으로 작성하세요. 중요 수치는 구체적으로 언급하고, 어려운 용어는 괄호로 쉽게 설명하세요.`,
+        messages:[{role:'user',content:q}]
+      })
+    });
+    if(res.ok){
+      const d=await res.json();
+      const txt=d.content?.find(b=>b.type==='text')?.text||'죄송합니다, 답변을 가져오지 못했습니다.';
+      aMsg.innerHTML = escMd(txt);
+      highlightChartFromAnswer(txt); // 차트 하이라이트 연동
+    } else {
+      aMsg.textContent='현재 AI 연결에 문제가 있습니다. 잠시 후 다시 시도해 주세요.';
+    }
+  } catch(e){
+    aMsg.textContent='네트워크 연결을 확인해 주세요. 인터넷이 연결된 상태에서 다시 시도해 주세요.';
+  }
+  body.scrollTop=body.scrollHeight;
+}
+function sendQ(){const inp=document.getElementById('qa-inp');const q=inp.value.trim();if(!q)return;inp.value='';askQ(q);}
+
+/* ─── Q&A → 차트 하이라이트 양방향 연동 ─── */
+function highlightChartFromAnswer(answerText){
+  if(!lastDashboardJson?.barChart?.labels?.length) return;
+  const labels = lastDashboardJson.barChart.labels;
+  const text = answerText.replace(/\*\*([^*]+)\*\*/g,'$1'); // 마크다운 제거
+
+  // 답변 텍스트에서 차트 라벨과 매칭되는 항목 찾기
+  const matched = labels.reduce((acc, lbl, idx) => {
+    // 라벨이 답변 텍스트에 포함되면 매칭
+    if(text.includes(lbl)) acc.push(idx);
+    return acc;
+  }, []);
+
+  if(!matched.length) return;
+
+  // 현재 렌더링된 c-main 차트에 activeElements 설정
+  const chart = CI['c-main'];
+  if(!chart) return;
+
+  try {
+    const activeElements = matched.map(idx => ({datasetIndex:0, index:idx}));
+    chart.setActiveElements(activeElements);
+    chart.tooltip.setActiveElements(activeElements, {x:0,y:0});
+    chart.update();
+
+    // 3초 후 하이라이트 해제
+    setTimeout(()=>{
+      try{ chart.setActiveElements([]); chart.tooltip.setActiveElements([]); chart.update(); }catch(e){}
+    }, 3000);
+  } catch(e){}
+}
+
+/* ─── EXPORT ─── */
+function openExp(){document.getElementById('exp-modal').classList.add('open');}
+function closeExp(){document.getElementById('exp-modal').classList.remove('open');}
+function selExp(el){document.querySelectorAll('.exp-opt').forEach(o=>o.classList.remove('sel'));el.classList.add('sel');}
+
+/* ─── EXPORT — 실제 파일 생성 ─── */
+function getExportFname(){
+  return (document.getElementById('t-title')?.textContent||'인사이트 대시보드')
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g,'').trim()||'인사이트 대시보드';
+}
+
+// 전체 콘텐츠 높이로 캡처하는 공통 유틸
+async function captureFullDashboard(){
+  const el      = document.getElementById('tab-overview');
+  const scroll  = document.getElementById('db-scroll');
+  const view    = document.getElementById('view-dashboard');
+  const mainEl  = document.querySelector('.main');
+
+  // 모든 부모 컨테이너의 스타일 임시 저장 후 확장
+  const saved = [scroll, view, mainEl].map(node => node ? {
+    node,
+    overflow:  node.style.overflow,
+    maxHeight: node.style.maxHeight,
+    height:    node.style.height,
+    flex:      node.style.flex,
+  } : null).filter(Boolean);
+
+  saved.forEach(({node}) => {
+    node.style.overflow  = 'visible';
+    node.style.maxHeight = 'none';
+    node.style.height    = 'auto';
+    node.style.flex      = 'none';
+  });
+
+  // 레이아웃 재계산 + 차트 재렌더링 대기
+  await new Promise(r => setTimeout(r, 150));
+
+  const canvas = await html2canvas(el, {
+    backgroundColor: isLight ? '#F2F2F5' : '#17171A',
+    scale: 2, useCORS: true, logging: false,
+    width:  el.scrollWidth,
+    height: el.scrollHeight,
+    windowWidth:  el.scrollWidth,
+    windowHeight: el.scrollHeight,
+  });
+
+  // 원래 스타일 복원
+  saved.forEach(({node, overflow, maxHeight, height, flex}) => {
+    node.style.overflow  = overflow;
+    node.style.maxHeight = maxHeight;
+    node.style.height    = height;
+    node.style.flex      = flex;
+  });
+
+  return canvas;
+}
+
+async function exportImage(fname){
+  const canvas = await captureFullDashboard();
+  const a = document.createElement('a');
+  a.download = fname+'.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+async function exportPDF(fname, j){
+  const canvas = await captureFullDashboard();
+  const {jsPDF} = window.jspdf;
+  const pdf = new jsPDF({orientation:'p', unit:'mm', format:'a4'});
+  const pW=pdf.internal.pageSize.getWidth(), pH=pdf.internal.pageSize.getHeight(), mg=12;
+  const cW=pW-mg*2;
+  // 보라 헤더
+  pdf.setFillColor(123,95,255); pdf.rect(0,0,pW,7,'F');
+  // 제목
+  pdf.setFontSize(17); pdf.setTextColor(26,26,46);
+  pdf.text(j.title||fname, mg, 17);
+  // 서브
+  pdf.setFontSize(8.5); pdf.setTextColor(90,90,114);
+  pdf.text(`flow AI 인사이트 대시보드  ·  ${new Date().toLocaleDateString('ko-KR')} 생성`, mg, 24);
+  // 대시보드 이미지 — 여러 페이지에 걸쳐 분할
+  const startY=29, availH=pH-startY-mg;
+  const imgRatio=canvas.height/canvas.width;
+  const totalImgH=cW*imgRatio;
+  if(totalImgH<=availH){
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',mg,startY,cW,totalImgH);
+  } else {
+    // 높이가 넘으면 여러 페이지로 분할
+    const pageImgH = availH;
+    const pageCount = Math.ceil(totalImgH / pageImgH);
+    const srcPageH = canvas.height / pageCount;
+    for(let p=0; p<pageCount; p++){
+      if(p>0) pdf.addPage();
+      const srcY = p * srcPageH;
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = Math.min(srcPageH, canvas.height - srcY);
+      sliceCanvas.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
+      const yStart = p===0 ? startY : mg;
+      const hAvail = p===0 ? availH : pH-mg*2;
+      pdf.addImage(sliceCanvas.toDataURL('image/png'),'PNG',mg,yStart,cW,hAvail);
+    }
+  }
+  pdf.save(fname+'.pdf');
+}
+
+function exportExcel(fname, j){
+  const wb = XLSX.utils.book_new();
+  const now = new Date().toLocaleDateString('ko-KR');
+
+  // 1. KPI 시트
+  const kpiRows = [[`${j.title||fname}`,``,``,`생성: ${now}`],[],['지표','값','단위','설명','트렌드']];
+  (j.kpis||[]).forEach(k=>kpiRows.push([k.label,k.value,k.unit||'',k.sub||'',k.trend||'']));
+  const wsK = XLSX.utils.aoa_to_sheet(kpiRows);
+  wsK['!cols']=[{wch:22},{wch:12},{wch:8},{wch:30},{wch:18}];
+  XLSX.utils.book_append_sheet(wb,wsK,'KPI 요약');
+
+  // 2. 차트 데이터 시트
+  if(j.barChart?.labels?.length){
+    const rows=[[j.barChart.title||'차트 데이터',j.barChart.unit?`단위: ${j.barChart.unit}`:''],[],
+      ['항목','값',...(j.barChart.values2?.length?[j.barChart.label2||'값2']:[])]];
+    j.barChart.labels.forEach((lbl,i)=>{
+      const r=[lbl,j.barChart.values?.[i]??''];
+      if(j.barChart.values2?.length) r.push(j.barChart.values2[i]??'');
+      rows.push(r);
+    });
+    // stacked datasets 지원
+    if(j.barChart.datasets?.length){
+      rows[2]=['항목',...j.barChart.datasets.map(d=>d.label)];
+      j.barChart.labels.forEach((lbl,i)=>rows.push([lbl,...j.barChart.datasets.map(d=>d.values?.[i]??'')]));
+    }
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:22},{wch:14},{wch:14},{wch:14}];
+    XLSX.utils.book_append_sheet(wb,ws,'차트 데이터');
+  }
+
+  // 3~4. 테이블 시트
+  [[j.table,'상세 데이터'],[j.table2,'추가 데이터']].forEach(([tbl,sheetName])=>{
+    if(!tbl?.rows?.length) return;
+    const rows=[[tbl.title||sheetName,tbl.unit?`단위: ${tbl.unit}`:''],[],['순위','항목','값']];
+    tbl.rows.forEach((r,i)=>rows.push([i+1,r.name,r.value]));
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:6},{wch:28},{wch:14}];
+    XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  });
+
+  // 5. 인사이트 시트
+  const insText = (j.insight||'').replace(/\*\*([^*]+)\*\*/g,'$1');
+  const ws5=XLSX.utils.aoa_to_sheet([['AI 분석 의견'],[],[insText]]);
+  ws5['!cols']=[{wch:100}];
+  XLSX.utils.book_append_sheet(wb,ws5,'AI 인사이트');
+
+  XLSX.writeFile(wb,fname+'.xlsx');
+}
+
+async function exportPPT(fname, j){
+  // ── PPTX raw XML 생성 (JSZip) ──────────────────────────────────
+  const SW=9144000, SH=5143500; // EMU (widescreen 16:9)
+  const xe=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  // 텍스트 박스 helper
+  function tb(id,x,y,cx,cy,paras,bg,bd){
+    const fill=bg?`<a:solidFill><a:srgbClr val="${bg}"/></a:solidFill>`:'<a:noFill/>';
+    const line=bd?`<a:ln pt="6400"><a:solidFill><a:srgbClr val="${bd}"/></a:solidFill></a:ln>`:'<a:ln><a:noFill/></a:ln>';
+    const ps=paras.map(p=>{
+      const runs=(p.runs||[{t:p.t,sz:p.sz,bold:p.bold,color:p.color}]).map(r=>{
+        const fc=r.color?`<a:solidFill><a:srgbClr val="${r.color}"/></a:solidFill>`:'';
+        return `<a:r><a:rPr lang="ko-KR" sz="${r.sz||1600}" ${r.bold?'b="1"':''} dirty="0">${fc}</a:rPr><a:t>${xe(r.t||'')}</a:t></a:r>`;
+      }).join('');
+      return `<a:p><a:pPr algn="${p.align||'l'}"/>${runs}</a:p>`;
+    }).join('');
+    return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="s${id}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr/></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fill}${line}</p:spPr>
+<p:txBody><a:bodyPr wrap="square" anchor="t"/><a:lstStyle/>${ps}</p:txBody></p:sp>`;
+  }
+
+  // 사각형 (텍스트 없음)
+  function rc(id,x,y,cx,cy,bg,bd){
+    const fill=bg?`<a:solidFill><a:srgbClr val="${bg}"/></a:solidFill>`:'<a:noFill/>';
+    const line=bd?`<a:ln><a:solidFill><a:srgbClr val="${bd}"/></a:solidFill></a:ln>`:'<a:ln><a:noFill/></a:ln>';
+    return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="r${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${fill}${line}</p:spPr>
+<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`;
+  }
+
+  // 슬라이드 XML wrapper
+  function slideXml(shapes){
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<p:cSld><p:spTree>
+<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+${shapes.join('\n')}
+</p:spTree></p:cSld></p:sld>`;
+  }
+
+  // ── Slide 1: 제목 + KPI + 인사이트 ──
+  const dk=!isLight, bgC=dk?'0E0E10':'F2F2F5', cardC=dk?'17171A':'FFFFFF';
+  const tc=dk?'F0EFF5':'1A1A2E', sc=dk?'9896A8':'5A5A72', bdC=dk?'2E2E36':'E2E2E8';
+  const s1=[]; let sid=2;
+
+  // 배경
+  s1.push(rc(sid++,0,0,SW,SH,bgC));
+  // 보라 헤더바
+  s1.push(rc(sid++,0,0,SW,274638,'7B5FFF'));
+  // 헤더 텍스트
+  s1.push(tb(sid++,228600,45720,SW-914400,182880,
+    [{t:'flow AI 인사이트 대시보드',sz:1200,bold:true,color:'FFFFFF'}]));
+  s1.push(tb(sid++,SW-1371600,45720,1143000,182880,
+    [{t:new Date().toLocaleDateString('ko-KR'),sz:1000,color:'EDE8FF',align:'r'}]));
+
+  // 대시보드 제목
+  s1.push(tb(sid++,228600,320040,SW-457200,548640,
+    [{t:j.title||fname,sz:2600,bold:true,color:tc}]));
+
+  // KPI 카드
+  const kpis=(j.kpis||[]).slice(0,6);
+  const kW=kpis.length?Math.floor((SW-457200)/kpis.length):SW;
+  const kX0=228600, kY=960120, kH=1097280;
+  kpis.forEach((k,i)=>{
+    const x=kX0+i*kW, w=kW-91440;
+    s1.push(rc(sid++,x,kY,w,kH,cardC,k.highlight?'7B5FFF':bdC));
+    s1.push(tb(sid++,x+45720,kY+54864,w-91440,182880,
+      [{t:k.label,sz:800,color:sc,align:'ctr'}]));
+    s1.push(tb(sid++,x+45720,kY+228600,w-91440,411480,
+      [{t:`${k.value}${k.unit||''}`,sz:String(k.value).length>6?1600:2200,bold:true,color:k.highlight?'9B82FF':tc,align:'ctr'}]));
+    if(k.sub) s1.push(tb(sid++,x+45720,kY+685800,w-91440,182880,
+      [{t:k.sub,sz:700,color:sc,align:'ctr'}]));
+    if(k.trend) s1.push(tb(sid++,x+45720,kY+868400,w-91440,137160,
+      [{t:k.trend,sz:800,color:k.trend.startsWith('+')?'43C59E':'E05252',align:'ctr'}]));
+  });
+
+  // 인사이트 박스
+  const insY=2194560, insH=1920240;
+  const insightText=(j.insight||'').replace(/\*\*([^*]+)\*\*/g,'$1').slice(0,300);
+  s1.push(rc(sid++,228600,insY,SW-457200,insH,dk?'1A1820':'F0EEFF','7B5FFF'));
+  s1.push(tb(sid++,320040,insY+54864,SW-640080,228600,
+    [{t:'✦  AI 분석 의견',sz:1100,bold:true,color:'7B5FFF'}]));
+  s1.push(tb(sid++,320040,insY+320040,SW-640080,insH-411480,
+    [{t:insightText,sz:1000,color:tc}]));
+
+  // ── Slide 2: 데이터 ──
+  const s2=[]; sid=2;
+  s2.push(rc(sid++,0,0,SW,SH,bgC));
+  s2.push(rc(sid++,0,0,SW,274638,'378ADD'));
+  s2.push(tb(sid++,228600,45720,SW-457200,182880,
+    [{t:'데이터 상세',sz:1600,bold:true,color:'FFFFFF'}]));
+
+  // 차트 데이터 테이블
+  let xL=228600;
+  if(j.barChart?.labels?.length){
+    const cW2=Math.floor((SW-457200)/2)-91440;
+    s2.push(tb(sid++,xL,320040,cW2,182880,
+      [{t:j.barChart.title||'차트 데이터',sz:1200,bold:true,color:tc}]));
+    // 헤더 행
+    s2.push(rc(sid++,xL,548640,cW2,228600,'378ADD'));
+    s2.push(tb(sid++,xL+45720,548640,Math.floor(cW2*0.65),228600,
+      [{t:'항목',sz:900,bold:true,color:'FFFFFF'}]));
+    s2.push(tb(sid++,xL+Math.floor(cW2*0.65),548640,Math.floor(cW2*0.35),228600,
+      [{t:`값${j.barChart.unit?` (${j.barChart.unit})`:''}`,sz:900,bold:true,color:'FFFFFF',align:'r'}]));
+    // 데이터 행
+    j.barChart.labels.slice(0,10).forEach((lbl,i)=>{
+      const ry=548640+228600*(i+1);
+      const rowBg=i%2?(dk?'1A1A20':'F5F5FA'):(dk?'17171A':'FFFFFF');
+      s2.push(rc(sid++,xL,ry,cW2,228600,rowBg,bdC));
+      s2.push(tb(sid++,xL+45720,ry,Math.floor(cW2*0.65),228600,[{t:lbl,sz:900,color:tc}]));
+      s2.push(tb(sid++,xL+Math.floor(cW2*0.65),ry,Math.floor(cW2*0.35),228600,
+        [{t:String(j.barChart.values?.[i]??''),sz:900,color:tc,align:'r'}]));
+    });
+    xL+=cW2+182880;
+  }
+
+  if(j.table?.rows?.length){
+    const cW3=SW-xL-228600;
+    s2.push(tb(sid++,xL,320040,cW3,182880,
+      [{t:j.table.title||'상세 현황',sz:1200,bold:true,color:tc}]));
+    s2.push(rc(sid++,xL,548640,cW3,228600,'378ADD'));
+    const col0=Math.floor(cW3*0.12), col1=Math.floor(cW3*0.55), col2=cW3-col0-col1;
+    s2.push(tb(sid++,xL,548640,col0,228600,[{t:'순위',sz:900,bold:true,color:'FFFFFF',align:'ctr'}]));
+    s2.push(tb(sid++,xL+col0,548640,col1,228600,[{t:'항목',sz:900,bold:true,color:'FFFFFF'}]));
+    s2.push(tb(sid++,xL+col0+col1,548640,col2,228600,
+      [{t:`값${j.table.unit?` (${j.table.unit})`:''}`,sz:900,bold:true,color:'FFFFFF',align:'r'}]));
+    j.table.rows.slice(0,10).forEach((r,i)=>{
+      const ry=548640+228600*(i+1);
+      const rowBg=i%2?(dk?'1A1A20':'F5F5FA'):(dk?'17171A':'FFFFFF');
+      s2.push(rc(sid++,xL,ry,cW3,228600,rowBg,bdC));
+      s2.push(tb(sid++,xL,ry,col0,228600,[{t:String(i+1),sz:900,color:sc,align:'ctr'}]));
+      s2.push(tb(sid++,xL+col0,ry,col1,228600,[{t:r.name,sz:900,color:tc}]));
+      s2.push(tb(sid++,xL+col0+col1,ry,col2,228600,
+        [{t:r.value.toLocaleString(),sz:900,color:tc,align:'r'}]));
+    });
+  }
+
+  // ── ZIP 조합 ──
+  const zip = new JSZip();
+
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+  <Override PartName="/ppt/slides/slide2.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+  <Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+</Types>`);
+
+  zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+</Relationships>`);
+
+  zip.file('ppt/presentation.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  saveSubsetFonts="1">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
+  <p:sldSz cx="${SW}" cy="${SH}" type="custom"/>
+  <p:notesSz cx="6858000" cy="9144000"/>
+  <p:sldIdLst>
+    <p:sldId id="256" r:id="rId2"/>
+    <p:sldId id="257" r:id="rId3"/>
+  </p:sldIdLst>
+</p:presentation>`);
+
+  zip.file('ppt/_rels/presentation.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide2.xml"/>
+</Relationships>`);
+
+  // 최소 slideMaster / slideLayout / theme
+  const smRel = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+</Relationships>`;
+  const slRel = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>`;
+  const sldRel = n => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+</Relationships>`;
+
+  zip.file('ppt/slideMasters/slideMaster1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld><p:spTree>
+    <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+    <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+  </p:spTree></p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  <p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId2"/></p:sldLayoutIdLst>
+</p:sldMaster>`);
+
+  zip.file('ppt/slideMasters/_rels/slideMaster1.xml.rels', smRel);
+
+  zip.file('ppt/slideLayouts/slideLayout1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" type="blank">
+  <p:cSld><p:spTree>
+    <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+    <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+  </p:spTree></p:cSld>
+</p:sldLayout>`);
+
+  zip.file('ppt/slideLayouts/_rels/slideLayout1.xml.rels', slRel);
+
+  zip.file('ppt/theme/theme1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="flow">
+  <a:themeElements>
+    <a:clrScheme name="flow">
+      <a:dk1><a:srgbClr val="1A1A2E"/></a:dk1>
+      <a:lt1><a:srgbClr val="FFFFFF"/></a:lt1>
+      <a:dk2><a:srgbClr val="5A5A72"/></a:dk2>
+      <a:lt2><a:srgbClr val="F2F2F5"/></a:lt2>
+      <a:accent1><a:srgbClr val="7B5FFF"/></a:accent1>
+      <a:accent2><a:srgbClr val="378ADD"/></a:accent2>
+      <a:accent3><a:srgbClr val="43C59E"/></a:accent3>
+      <a:accent4><a:srgbClr val="E8A838"/></a:accent4>
+      <a:accent5><a:srgbClr val="D85A30"/></a:accent5>
+      <a:accent6><a:srgbClr val="9B82FF"/></a:accent6>
+      <a:hlink><a:srgbClr val="7B5FFF"/></a:hlink>
+      <a:folHlink><a:srgbClr val="5A5A72"/></a:folHlink>
+    </a:clrScheme>
+    <a:fontScheme name="flow">
+      <a:majorFont><a:latin typeface="+mj-lt"/><a:ea typeface="+mj-ea"/><a:cs typeface="+mj-cs"/></a:majorFont>
+      <a:minorFont><a:latin typeface="+mn-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/></a:minorFont>
+    </a:fontScheme>
+    <a:fmtScheme name="flow"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>
+      <a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="12700"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="19050"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>
+      <a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle></a:effectStyleLst>
+      <a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst>
+    </a:fmtScheme>
+  </a:themeElements>
+</a:theme>`);
+
+  zip.file('ppt/slides/slide1.xml', slideXml(s1));
+  zip.file('ppt/slides/slide2.xml', slideXml(s2));
+  zip.file('ppt/slides/_rels/slide1.xml.rels', sldRel(1));
+  zip.file('ppt/slides/_rels/slide2.xml.rels', sldRel(2));
+
+  function slideXml(shapes){
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<p:cSld><p:spTree>
+<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+${shapes.join('\n')}
+</p:spTree></p:cSld></p:sld>`;
+  }
+
+  const blob = await zip.generateAsync({
+    type:'blob',
+    mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname+'.pptx';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+}
+
+async function exportWord(fname, j){
+  const now = new Date().toLocaleDateString('ko-KR');
+  const xe = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  // ── OOXML 헬퍼 ──
+  const para = (text, opts={}) => {
+    const sz = opts.sz||20, color = opts.color||'1A1A2E';
+    const bold = opts.bold ? '<w:b/>' : '';
+    const shd = opts.shd ? `<w:shd w:val="clear" w:fill="${opts.shd}"/>` : '';
+    const spacing = opts.before||opts.after ? `<w:spacing${opts.before?` w:before="${opts.before}"`:''}${opts.after?` w:after="${opts.after}"`:''}/>` : '';
+    const bdr = opts.borderLeft ? `<w:pBdr><w:left w:val="single" w:sz="24" w:color="${opts.borderLeft}"/></w:pBdr>` : '';
+    const pPr = (spacing||bdr||shd) ? `<w:pPr>${spacing}${bdr}${shd?`<w:shd w:val="clear" w:fill="${opts.shd}"/>`:''}</w:pPr>` : '';
+    const rPr = `<w:rPr>${bold}<w:color w:val="${color}"/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr>`;
+    return `<w:p>${pPr}<w:r>${rPr}<w:t xml:space="preserve">${xe(text)}</w:t></w:r></w:p>`;
+  };
+
+  const tableRow = (cells, isHeader=false) => {
+    const bgFill = isHeader ? '378ADD' : null;
+    const cols = cells.map(([text, wPct, align='left'])=>{
+      const w = Math.round(7560 * wPct);
+      const bg = bgFill ? `<w:shd w:val="clear" w:fill="${bgFill}"/>` : '';
+      const color = isHeader ? 'FFFFFF' : '1A1A2E';
+      const algn = align==='right'?'<w:jc w:val="right"/>':align==='center'?'<w:jc w:val="center"/>':'';
+      return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${bg}<w:tcMar><w:top w:w="60"/><w:bottom w:w="60"/><w:left w:w="80"/><w:right w:w="80"/></w:tcMar></w:tcPr>
+        <w:p><w:pPr>${algn}</w:pPr><w:r><w:rPr>${isHeader?'<w:b/>':''}<w:color w:val="${color}"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">${xe(String(text))}</w:t></w:r></w:p></w:tc>`;
+    }).join('');
+    return `<w:tr>${cols}</w:tr>`;
+  };
+
+  const makeTable = (rows) => `<w:tbl><w:tblPr><w:tblW w:w="7560" w:type="dxa"/>
+    <w:tblBorders><w:top w:val="single" w:sz="4" w:color="D0D0D8"/><w:left w:val="single" w:sz="4" w:color="D0D0D8"/>
+    <w:bottom w:val="single" w:sz="4" w:color="D0D0D8"/><w:right w:val="single" w:sz="4" w:color="D0D0D8"/>
+    <w:insideH w:val="single" w:sz="4" w:color="D0D0D8"/><w:insideV w:val="single" w:sz="4" w:color="D0D0D8"/></w:tblBorders>
+    </w:tblPr>${rows.join('')}</w:tbl>`;
+
+  // ── 문서 본문 ──
+  const kpiRows = (j.kpis||[]).map(k=>tableRow([
+    [k.label, 0.25], [`${k.value}${k.unit||''}`, 0.2, 'right'],
+    [k.sub||'', 0.35], [k.trend||'', 0.2, 'right']
+  ]));
+  const kpiTable = makeTable([
+    tableRow([['지표명',0.25],['값',0.2,'right'],['설명',0.35],['트렌드',0.2,'right']], true),
+    ...kpiRows
+  ]);
+
+  const dataTable = (tbl) => {
+    if(!tbl?.rows?.length) return '';
+    const rows = tbl.rows.map((r,i)=>tableRow([
+      [i+1, 0.08,'center'], [r.name, 0.67], [r.value.toLocaleString()+(tbl.unit?` ${tbl.unit}`:''), 0.25, 'right']
+    ]));
+    return makeTable([tableRow([['순위',0.08,'center'],['항목',0.67],['값',0.25,'right']],true),...rows]);
+  };
+
+  const insightText = (j.insight||'').replace(/\*\*([^*]+)\*\*/g,'$1');
+
+  const body = [
+    // 헤더 바
+    `<w:p><w:pPr><w:shd w:val="clear" w:fill="7B5FFF"/><w:spacing w:after="0"/></w:pPr>
+      <w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="20"/></w:rPr><w:t>flow AI 인사이트 대시보드</w:t></w:r></w:p>`,
+    para(j.title||fname, {sz:32, bold:true, before:200, after:80}),
+    para(`flow AI 인사이트 대시보드  ·  ${now} 생성`, {sz:17, color:'9898B0', after:200}),
+    para('KPI 요약', {sz:22, bold:true, color:'378ADD', before:160, after:80}),
+    kpiTable,
+    para('', {after:120}),
+    para('AI 분석 의견', {sz:22, bold:true, color:'7B5FFF', before:160, after:80}),
+    para(insightText, {sz:19, color:'1A1A2E', before:80, after:80, borderLeft:'7B5FFF', shd:'F0EEFF'}),
+    para('', {after:120}),
+    j.table?.rows?.length ? para(j.table.title||'상세 데이터', {sz:22, bold:true, color:'378ADD', before:160, after:80}) : '',
+    j.table?.rows?.length ? dataTable(j.table) : '',
+    j.table2?.rows?.length ? para('', {after:80}) : '',
+    j.table2?.rows?.length ? para(j.table2.title||'추가 데이터', {sz:22, bold:true, color:'378ADD', before:160, after:80}) : '',
+    j.table2?.rows?.length ? dataTable(j.table2) : '',
+  ].filter(Boolean).join('\n');
+
+  const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<w:body>
+${body}
+<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr>
+</w:body></w:document>`;
+
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
+  <Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
+</Types>`);
+  zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+  zip.file('word/document.xml', docXml);
+  zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>
+</Relationships>`);
+
+  zip.file('word/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr>
+      <w:rFonts w:ascii="맑은 고딕" w:hAnsi="맑은 고딕" w:eastAsia="맑은 고딕" w:cs="Arial"/>
+      <w:sz w:val="20"/><w:szCs w:val="20"/>
+    </w:rPr></w:rPrDefault>
+  </w:docDefaults>
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:pPr><w:spacing w:after="160" w:line="276" w:lineRule="auto"/></w:pPr>
+  </w:style>
+</w:styles>`);
+
+  zip.file('word/settings.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:compat>
+    <w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/>
+  </w:compat>
+</w:settings>`);
+
+  zip.file('word/fontTable.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:font w:name="맑은 고딕"><w:charset w:val="129"/></w:font>
+  <w:font w:name="Arial"><w:charset w:val="00"/></w:font>
+</w:fonts>`);
+
+  const blob = await zip.generateAsync({
+    type:'blob',
+    mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname+'.docx';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+}
+
+async function doExp(){
+  const sel=document.querySelector('.exp-opt.sel');
+  const title=(sel?.querySelector('.exp-title')?.textContent||'PDF').replace(/NEW/g,'').trim();
+  closeExp();
+  const j=lastDashboardJson;
+  if(!j){toast('⚠️ 먼저 대시보드를 생성해 주세요.');return;}
+  const fname=getExportFname();
+  toast(`📤 ${title}(으)로 내보내는 중입니다...`,60000);
+  try{
+    if(title==='PDF')              await exportPDF(fname,j);
+    else if(title==='엑셀')        exportExcel(fname,j);
+    else if(title==='파워포인트')  await exportPPT(fname,j);
+    else if(title==='워드')        exportWord(fname,j);
+    else if(title==='이미지')      await exportImage(fname);
+    else if(title==='flow 게시물'){
+      toast('📋 flow 게시물 등록은 flow API 연동 후 지원될 예정입니다.',4000); return;
+    }
+    toast(`✅ ${title} 내보내기 완료! 다운로드 폴더를 확인해 주세요.`,4000);
+  }catch(e){
+    console.error('내보내기 오류:',e);
+    toast(`⚠️ 내보내기 오류: ${e.message||'알 수 없는 문제가 발생했습니다.'}`,4000);
+  }
+}
+
+/* ─── KEYBOARD ─── */
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeExp();});
+
+/* ─── INIT ─── */
+goView('empty');
+renderLib();
+// 초기: 대시보드 메뉴 active + 대시보드 히스토리 표시
+document.getElementById('hist-chat').style.display='none';
+document.getElementById('hist-db').style.display='block';
+document.getElementById('lnb-db').classList.add('active');
+
+// localStorage에서 히스토리 복원 (브라우저 재시작 후에도 유지)
+(function restoreHistory(){
+  try {
+    const saved = JSON.parse(localStorage.getItem('db-history')||'[]');
+    if(!saved.length) return;
+    const hist = document.getElementById('hist-db');
+    saved.forEach(entry => {
+      const item = document.createElement('div');
+      item.className = 'lnb-recent';
+      item.textContent = entry.title;
+      item.title = entry.isSample ? '샘플 템플릿' : '업로드 파일 (재분석 필요)';
+      item.onclick = () => {
+        lnbSelRecent(item);
+        if(entry.isSample){
+          const data = SAMPLE_DB[entry.fname];
+          if(data){ isSampleDashboard=true; renderDynamic(data, entry.fname, true); }
+          else { goView('dashboard'); setDashboardMeta(entry.title, entry.fname, true); }
+        } else {
+          // 실제 파일은 원본이 없으므로 안내
+          toast('⚠️ 업로드 파일은 다시 분석이 필요합니다. 파일을 다시 올려 주세요.', 4000);
+          goView('empty');
+        }
+      };
+      hist.appendChild(item);
+    });
+  } catch(e) {}
+})();
+</script>
+<!-- 뷰 변경 드롭다운 — 레이아웃에 영향 없는 독립 오버레이 -->
+<div id="layout-dd" style="
+  display:none;
+  position:fixed;
+  z-index:9999;
+  background:var(--bg2);
+  border:1.5px solid var(--bd2);
+  border-radius:10px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  width:200px;
+  overflow:hidden;
+"></div>
+</body>
+</html>
