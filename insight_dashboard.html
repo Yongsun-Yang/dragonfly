@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -247,6 +247,7 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 .card-title{font-size:13.5px;font-weight:700;color:var(--txt);margin-bottom:3px;}
 .card-sub{font-size:11.5px;color:var(--txt3);margin-bottom:13px;}
 .g2{display:grid;grid-template-columns:1fr 290px;gap:12px;margin-bottom:12px;}
+.g2-pie{display:grid;grid-template-columns:260px 1fr;gap:12px;margin-bottom:12px;}
 .g2eq{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:12px;}
 .leg-row{display:flex;flex-wrap:wrap;gap:8px 13px;margin-bottom:12px;}
@@ -445,15 +446,23 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
 /* ═══════════════════════════════
    모바일 / 태블릿 반응형
    ═══════════════════════════════ */
-.mob-hamburger,.mob-qa-btn,.mob-lnb-overlay{display:none;}
+.mob-hamburger,.mob-qa-btn,.mob-lnb-overlay,.mob-view-btn{display:none;}
 .mob-hamburger{align-items:center;justify-content:center;width:36px;height:36px;
   border-radius:var(--r);background:var(--bg3);border:1px solid var(--bd);
   cursor:pointer;font-size:18px;flex-shrink:0;}
 .mob-qa-btn{position:fixed;bottom:24px;right:20px;z-index:500;
+  width:52px;height:52px;border-radius:50%;background:var(--acc);
+  align-items:center;justify-content:center;font-size:22px;
+  box-shadow:0 4px 20px rgba(123,95,255,0.45);cursor:pointer;border:none;color:#fff;}
+.mob-view-btn{position:fixed;bottom:24px;right:84px;z-index:500;
+  width:52px;height:52px;border-radius:50%;background:var(--bg2);
+  align-items:center;justify-content:center;font-size:18px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.3);cursor:pointer;border:1.5px solid var(--bd2);color:var(--txt);}
 
 @media(max-width:768px){
   .mob-hamburger{display:flex;}
   .mob-qa-btn{display:flex;}
+  .mob-view-btn{display:flex;}
   #mob-qa-close{display:block!important;}
   .lnb{position:fixed;left:-234px;top:0;height:100%;z-index:300;transition:left 0.25s ease;box-shadow:none;}
   .lnb.mob-open{left:0;box-shadow:4px 0 24px rgba(0,0,0,0.35);}
@@ -492,6 +501,7 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
   .kpi{padding:10px 10px;}
   .kpi-val{font-size:22px;}
   .mob-qa-btn{bottom:20px;right:16px;}
+  .mob-view-btn{bottom:20px;right:80px;}
 }
 @media(min-width:769px) and (max-width:1100px){
   .lnb{width:200px;}
@@ -504,11 +514,25 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
   font-size:12px;color:var(--txt);cursor:pointer;transition:background 0.1s;border-radius:6px;}
 .layout-opt:hover{background:var(--bg3);}
 .layout-opt.cur{color:var(--acc2);font-weight:700;}
+
+/* 대시보드 재구성 프롬프트 바 */
+.refine-bar{display:none;width:100%;padding:10px 18px;background:var(--bg2);border-top:1px solid var(--bd);gap:8px;align-items:center;flex-shrink:0;}
+.refine-bar.open{display:flex;}
+.refine-inp{flex:1;background:var(--bg3);border:1.5px solid var(--bd);border-radius:var(--r);padding:8px 13px;font-size:13px;color:var(--txt);outline:none;transition:border-color 0.15s;}
+.refine-inp:focus{border-color:var(--acc);}
+.refine-inp::placeholder{color:var(--txt3);}
+.refine-send{padding:8px 16px;background:var(--acc);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity 0.15s;}
+.refine-send:hover{opacity:0.85;}
+.refine-send:disabled{opacity:0.45;cursor:default;}
+.refine-close{font-size:18px;color:var(--txt3);cursor:pointer;padding:4px 6px;line-height:1;}
+.refine-close:hover{color:var(--txt);}
+@media(max-width:768px){.refine-bar{padding:10px 12px;}}
 </style>
 </head>
 <body>
 <div id="toast"></div>
 <div class="mob-lnb-overlay" id="mob-overlay" onclick="toggleLNB()"></div>
+<button class="mob-view-btn" id="mob-view-btn" onclick="toggleLayoutPicker()" title="뷰 변경" style="display:none;">⊞</button>
 <button class="mob-qa-btn" id="mob-qa-btn" onclick="toggleQA()" title="AI에게 질문하기">💬</button>
 
 <!-- LNB -->
@@ -920,10 +944,21 @@ body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-s
         <div style="flex:1;"></div>
         <button class="btn btn-g" onclick="goView('empty')">📂 새 파일 올리기</button>
         <button class="btn btn-g" id="btn-reshuffle" onclick="reshuffleDashboard()" style="display:none;" title="원본 파일을 다른 관점으로 AI가 재분석합니다">🔬 AI 재분석</button>
+        <button class="btn btn-g" id="btn-refine" onclick="toggleRefineBar()" style="display:none;" title="원하는 수치·항목 위주로 대시보드를 재구성합니다">✏️ 직접 지정</button>
         <div class="layout-picker" id="layout-picker" style="display:none;">
           <button class="btn btn-g" onclick="toggleLayoutPicker()" id="btn-layout-pick">뷰 변경 ▾</button>
         </div>
         <button class="btn btn-p" onclick="openExp()">⬇ 내보내기·공유</button>
+      </div>
+
+      <!-- 재구성 프롬프트 바 -->
+      <div class="refine-bar" id="refine-bar">
+        <span style="font-size:12px;color:var(--txt3);white-space:nowrap;">보고 싶은 항목:</span>
+        <input class="refine-inp" id="refine-inp"
+          placeholder="예: 매출과 외상매출금만 보여줘 / 달성률 위주로 구성해줘"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendRefine();}">
+        <button class="refine-send" id="refine-send" onclick="sendRefine()">구성하기</button>
+        <span class="refine-close" onclick="toggleRefineBar()" title="닫기">×</span>
       </div>
 
       <div class="db-scroll" id="db-scroll">
@@ -1207,6 +1242,9 @@ function goView(n){
     sub.textContent='파일을 올리면 AI가 대시보드를 자동으로 만들어 드립니다';
     const rb=document.getElementById('btn-reshuffle'); if(rb) rb.style.display='none';
     const lp=document.getElementById('layout-picker'); if(lp) lp.style.display='none';
+    const mvb=document.getElementById('mob-view-btn'); if(mvb) mvb.style.display='none';
+    const rfb=document.getElementById('btn-refine'); if(rfb) rfb.style.display='none';
+    const bar=document.getElementById('refine-bar'); if(bar) bar.classList.remove('open');
   }
   else if(n==='analyzing'){ttl.textContent='데이터 분석 중';sub.textContent='잠시만 기다려 주세요';}
   else if(n==='dashboard'){}
@@ -2218,7 +2256,7 @@ function kpiHTML(kpis, accent, cls='kpi-strip'){
     const td = k.trend ? (k.trend.startsWith('+')?'up':k.trend.startsWith('-')?'dn':'flat') : '';
     const trendHtml = k.trend ? `<div class="kpi-trend ${td}">${k.trend}</div>` : '';
     const sparkHtml = k.sparkline?.length
-      ? `<canvas id="sp-${i}" style="width:100%;height:30px;margin-top:5px;display:block;"></canvas>` : '';
+      ? `<div style="height:32px;margin-top:6px;position:relative;"><canvas id="sp-${i}"></canvas></div>` : '';
     return `<div class="kpi">
       <div class="kpi-lbl">${esc(k.label)}</div>
       <div class="kpi-val" ${k.highlight?`style="color:${accent}"`:''}>${esc(k.value)}<span class="kpi-unit">${esc(k.unit||'')}</span></div>
@@ -2375,7 +2413,7 @@ function drawChartEl(id, bc, accent){
     cfg={type:'bar',data:{labels:bc.labels,datasets:[
       {label:bc.title,data:bc.values,backgroundColor:accent+'BB',order:2,borderRadius:3,borderSkipped:false},
       {label:bc.label2||'',data:bc.values2,type:'line',borderColor:'#43C59E',backgroundColor:'transparent',
-        pointRadius:3,pointBackgroundColor:'#43C59E',borderWidth:2,yAxisID:'y2',order:1,spanGaps:false}
+        pointRadius:3,pointBackgroundColor:'#43C59E',borderWidth:2,yAxisID:'y2',order:1,spanGaps:true}
     ]},options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:true,labels:{color:TK(),font:{size:10},boxWidth:8}},
         tooltip:{callbacks:{label:c=>c.datasetIndex===0?`${c.raw}${bc.unit||''}`:c.raw!=null?`${bc.label2}: ${c.raw}%`:''}}},
@@ -2433,6 +2471,7 @@ function drawChartEl(id, bc, accent){
                 y:{ticks:{color:TK(),font:{size:9.5},callback:v=>`${v}${bc.unit||''}`},grid:{color:GR()}}}}};
 
   } else if(!isHbar&&!isLine&&!isArea&&!isStacked&&!isRadar&&!isMixed){
+    if(!bc.values?.length) return; // values 없으면 렌더링 생략
     cfg={type:'bar',data:{labels:bc.labels,datasets:[{label:bc.title,data:bc.values,
       backgroundColor:bc.values.map(v=>v<0?'rgba(224,82,82,0.75)':accent+'BB'),
       borderRadius:3,borderSkipped:false}]},
@@ -2483,20 +2522,34 @@ function chartH(bc, defaultH=200){
 /* ─── 6가지 레이아웃 빌더 ─── */
 function buildLayout_standard(j, accent){
   const hasPie = j.pieChart?.labels?.length > 0;
-  const barH = j.barChart?.chartType==='hbar' ? Math.max(180,(j.barChart?.labels?.length||8)*26) : 200;
+  const ct = j.barChart?.chartType;
+  // mixed·line·area·radar는 너비가 충분해야 해서 풀너비 후 파이를 아래에 배치
+  const needsFullWidth = ['mixed','line','area','radar'].includes(ct);
+  const barH = ct==='hbar' ? Math.max(180,(j.barChart?.labels?.length||8)*26)
+              : ct==='radar' ? 220 : 220;
   const tab = document.getElementById('tab-overview');
   tab.innerHTML = kpiHTML(j.kpis,accent) + insightHTML(j) +
-    (hasPie
-      ? `<div class="g2" style="margin-bottom:12px;">
-          ${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', barH)}
-          ${pieCardHTML('c-pie', j.pieChart.title||'구성 비율', j.pieChart)}
-        </div>`
-      : `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', barH)}</div>`
-    ) +
-    (j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : '');
+    (needsFullWidth
+      ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', barH)}</div>` +
+        (hasPie
+          ? `<div class="g2-pie" style="margin-bottom:12px;">
+              ${pieCardHTML('c-pie', j.pieChart.title||'구성 비율', j.pieChart)}
+              ${j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : ''}
+            </div>`
+          : (j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : ''))
+      : hasPie
+        ? `<div class="g2" style="margin-bottom:12px;">
+            ${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', barH)}
+            ${pieCardHTML('c-pie', j.pieChart.title||'구성 비율', j.pieChart)}
+          </div>` +
+          (j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : '')
+        : `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'주요 지표', '', barH)}</div>` +
+          (j.table?.rows?.length ? tableCardHTML('t-main', j.table.title, j.table.unit) : '')
+    );
   drawChartEl('c-main', j.barChart, accent);
   if(hasPie) drawPieEl('c-pie', j.pieChart);
-  fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+  if(!needsFullWidth || !hasPie) fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
+  else fillTableEl('t-main', j.table?.rows, accent, j.table?.unit);
 }
 
 function buildLayout_trend(j, accent){
@@ -2602,15 +2655,9 @@ function buildLayout_compact(j, accent){
 function buildLayout_kpi_focus(j, accent){
   const hasBar = j.barChart?.labels?.length > 0;
   const hasPie = j.pieChart?.labels?.length > 0;
-  const h = j.barChart?.chartType==='hbar' ? Math.max(150,(j.barChart?.labels?.length||8)*22) : 160;
-  const kpiLarge = `<div class="kpi-strip kpi-strip-large" style="margin-bottom:14px;">${(j.kpis||[]).map(k=>`
-    <div class="kpi kpi-lg">
-      <div class="kpi-lbl">${esc(k.label)}</div>
-      <div class="kpi-val kpi-val-lg" ${k.highlight?`style="color:${accent}"`:''}>${esc(k.value)}<span class="kpi-unit">${esc(k.unit||'')}</span></div>
-      <div class="kpi-sub">${esc(k.sub||'')}</div>
-    </div>`).join('')}</div>`;
+  const h = chartH(j.barChart, 160);
   const tab = document.getElementById('tab-overview');
-  tab.innerHTML = kpiLarge + insightHTML(j) +
+  tab.innerHTML = kpiHTML(j.kpis, accent, 'kpi-strip kpi-strip-large') + insightHTML(j) +
     (hasBar ? `<div class="g-full">${chartCardHTML('c-main', j.barChart?.title||'', '', h)}</div>` : '') +
     (hasPie && j.table?.rows?.length
       ? `<div class="g-40-60" style="margin-bottom:12px;">${pieCardHTML('c-pie', j.pieChart.title||'', j.pieChart)}${tableCardHTML('t-main', j.table.title, j.table.unit)}</div>`
@@ -2792,7 +2839,10 @@ function renderDynamic(j, fname, skipHistory=false){
   const accent = j.accentColor || '#378ADD';
   const layout = j.layout || 'standard';
 
-  // 레이아웃별 빌더 호출 (14종)
+  // 1. 뷰를 먼저 표시
+  goView('dashboard');
+
+  // 2. HTML 골격만 삽입 (차트 드로잉 제외)
   const builders = {
     standard:    buildLayout_standard,
     trend:       buildLayout_trend,
@@ -2809,22 +2859,27 @@ function renderDynamic(j, fname, skipHistory=false){
     mosaic:      buildLayout_mosaic,
     kpi_grid:    buildLayout_kpi_grid,
   };
-  (builders[layout] || buildLayout_standard)(j, accent);
-  // 스파크라인 — DOM이 완전히 업데이트된 다음 프레임에 렌더링
-  requestAnimationFrame(() => drawSparklines(j.kpis, accent));
 
-  goView('dashboard');
+  // 3. 브라우저 레이아웃 계산 후 차트 렌더링
+  requestAnimationFrame(()=>{
+    (builders[layout] || buildLayout_standard)(j, accent);
+    // 스파크라인은 한 프레임 더 뒤에
+    requestAnimationFrame(() => drawSparklines(j.kpis, accent));
+  });
+
   setDashboardMeta(j.title, fname, skipHistory);
   lastDashboardJson = j;
-  // AI 재분석 버튼 — 실제 파일 업로드 시에만 노출
   const rb = document.getElementById('btn-reshuffle');
   if(rb) rb.style.display = isSampleDashboard ? 'none' : '';
   const lp = document.getElementById('layout-picker');
   if(lp) lp.style.display = '';
+  const mvb = document.getElementById('mob-view-btn');
+  if(mvb) mvb.style.display = '';
+  const rfb = document.getElementById('btn-refine');
+  if(rfb) rfb.style.display = '';
   toast('✅  대시보드를 완성했습니다!', 3500);
   dbContext = `파일: ${fname}\n${j.insight||''}\nKPI: ${(j.kpis||[]).map(k=>`${k.label} ${k.value}${k.unit||''}`).join(', ')}`;
 
-  // Q&A 패널 초기화
   firstQ = true;
   const qaBody = document.getElementById('qa-body');
   const chips = document.getElementById('qa-chips');
@@ -3043,6 +3098,52 @@ document.addEventListener('click', e=>{
 });
 window.addEventListener('scroll', ()=>{ const d=document.getElementById('layout-dd'); if(d) d.style.display='none'; }, true);
 window.addEventListener('resize', ()=>{ const d=document.getElementById('layout-dd'); if(d) d.style.display='none'; });
+
+/* ─── 직접 지정 (대시보드 재구성) ─── */
+function toggleRefineBar(){
+  const bar = document.getElementById('refine-bar');
+  const open = bar.classList.toggle('open');
+  if(open) setTimeout(()=>document.getElementById('refine-inp')?.focus(), 50);
+}
+
+async function sendRefine(){
+  const inp = document.getElementById('refine-inp');
+  const send = document.getElementById('refine-send');
+  const prompt = inp?.value.trim();
+  if(!prompt) return;
+  if(!lastDashboardJson){ toast('⚠️ 먼저 대시보드를 생성해 주세요.'); return; }
+
+  send.disabled = true; send.textContent = '분석 중...';
+
+  const system = `당신은 경영 데이터 대시보드 전문가입니다.
+이용자가 현재 대시보드에서 특정 수치·항목만 보고 싶다고 요청했습니다.
+기존 대시보드 JSON을 참고해 이용자 요청에 맞게 재구성한 새 대시보드 JSON을 반환하세요.
+규칙: 이용자가 원하는 항목 우선 선택, 나머지 축소 또는 생략, JSON 형식 동일 유지, JSON만 반환`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:2000, system,
+        messages:[{role:'user', content:
+          `현재 대시보드:\n${JSON.stringify(lastDashboardJson)}\n\n이용자 요청: "${prompt}"\n\n위 요청에 맞게 재구성한 대시보드 JSON을 반환하세요.`
+        }]
+      })
+    });
+    if(res.ok){
+      const d = await res.json();
+      const raw = d.content?.find(b=>b.type==='text')?.text||'';
+      const newJ = JSON.parse(raw.replace(/```json|```/g,'').trim());
+      newJ.accentColor = newJ.accentColor || lastDashboardJson.accentColor;
+      inp.value = '';
+      document.getElementById('refine-bar').classList.remove('open');
+      renderDynamic(newJ, lastFname, true);
+      toast(`✅ "${prompt.slice(0,20)}${prompt.length>20?'…':''}" 기준으로 재구성했습니다.`, 3500);
+    } else { toast('⚠️ AI 연결 오류. 다시 시도해 주세요.'); }
+  } catch(e){ toast('⚠️ 오류가 발생했습니다. 다시 시도해 주세요.'); }
+
+  send.disabled = false; send.textContent = '구성하기';
+}
 
 /* ─── AI 재분석 (실제 파일 전용) ─── */
 const ALL_LAYOUTS = ['standard','trend','ranking','comparison','table_heavy','compact',
@@ -3566,18 +3667,6 @@ ${shapes.join('\n')}
   zip.file('ppt/slides/slide2.xml', slideXml(s2));
   zip.file('ppt/slides/_rels/slide1.xml.rels', sldRel(1));
   zip.file('ppt/slides/_rels/slide2.xml.rels', sldRel(2));
-
-  function slideXml(shapes){
-    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
-  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
-  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<p:cSld><p:spTree>
-<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
-<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
-${shapes.join('\n')}
-</p:spTree></p:cSld></p:sld>`;
-  }
 
   const blob = await zip.generateAsync({
     type:'blob',
